@@ -64,6 +64,7 @@
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
         "siteConfig": {
           "linuxFxVersion": "DOTNETCORE|8.0",
+          "appCommandLine": "dotnet /home/site/wwwroot/OutThink.EmailInjectorApp.dll",
           "alwaysOn": true,
           "appSettings": [
             {
