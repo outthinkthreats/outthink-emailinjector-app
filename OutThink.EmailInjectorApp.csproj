@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>OutThink.EmailInjectorApp</RootNamespace>
+        <UserSecretsId>f3a92e03-5be2-4e0f-9a70-ed0ab9d27fa0</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>

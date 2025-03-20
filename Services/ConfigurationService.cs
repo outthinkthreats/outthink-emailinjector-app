@@ -23,13 +23,13 @@ namespace OutThink.EmailInjectorApp.Services
                 logger.LogError("KeyVault:Url is empty");
                 throw new Exception("KeyVault URL is missing in configuration.");
             }
-
+            
             var credential = new DefaultAzureCredential();
+            
             _keyVaultClient = new SecretClient(new Uri(keyVaultUrl), credential);
 
             _settings = new Dictionary<string, string?>
             {
-                { "AppClientId", _config["AzureId:ClientId"] },
                 { "ApiBaseUrl", GetSecretOrConfig("PublicApi:BaseUrl", "BaseUrl") },
                 { "BatchSize", GetSecretOrConfig("PublicApi:BatchSize", "BatchSize") },
                 { "SkipConfirmation", GetSecretOrConfig("PublicApi:SkipConfirmation", "SkipConfirmation") },

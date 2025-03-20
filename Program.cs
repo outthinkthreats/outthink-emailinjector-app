@@ -15,7 +15,8 @@ namespace OutThink.EmailInjectorApp
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
                     config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                          .AddEnvironmentVariables();
+                        .AddUserSecrets<Program>()
+                        .AddEnvironmentVariables();
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
