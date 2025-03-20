@@ -28,7 +28,7 @@ This document provides:
 2. Click **New Offer**.
 3. Select **Azure Application** as the offer type.
 4. Enter:
-   - **Offer Name:** Secure Email Injection App
+   - **Offer Name:** OutThink Email Injection App
    - **Unique ID:** outthink-emailinjectorapp
    - **Publisher:** OutThink
 
