@@ -53,6 +53,7 @@
             "type": "Microsoft.Common.TextBox",
             "label": "API Base URL",
             "toolTip": "Optional: Base URL for the email injector API (leave blank to use default).",
+            "defaultValue": "https://outthink-api-public.ot-services-dev.net",
             "constraints": {
               "required": false
             },
