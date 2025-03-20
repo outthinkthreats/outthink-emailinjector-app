@@ -100,7 +100,7 @@ namespace OutThink.EmailInjectorApp.Services
                         messageToBeFailed.Add(new FailDmiMessage(msg.MessageId, ex.Message, true));
                     }
                     // if we are not autoconfirming on reception (SkipConfirmation is false), we need to confirm the message
-                    if (!_skipConfirmation) await ConfirmInjectedMessagesAsync(messageToBeconfirmed);
+                    if (!_skipConfirmation && messageToBeconfirmed.Any()) await ConfirmInjectedMessagesAsync(messageToBeconfirmed);
                     if (messageToBeFailed.Any()) await FailInjectedMessagesAsync(new FailDmiMessages(messageToBeFailed));
                 }
             } while (pendingMessages);
@@ -132,66 +132,13 @@ namespace OutThink.EmailInjectorApp.Services
                 var response = await _httpRequestService.SendAsync(HttpMethod.Post,
                     "/communications/messages/dmi/fail", failures);
                 response.EnsureSuccessStatusCode();
-                _loggingService.LogAsync($"{failures.Messages.Count()} message failed", logType: LogType.Warning).Wait();
+                _loggingService.LogAsync($"{failures.Messages.Count()} messages failed", logType: LogType.Warning).Wait();
             }
             catch (Exception ex)
             {
                 _loggingService.LogAsync("Error while failing messages", [ex.Message], LogType.Error).Wait();
             }
         }
-
-        // private async Task InjectEmailAsync(string email, string htmlBody, string token, string fromEmail, string fromName, string subject)
-        // {
-        //     var message = new
-        //     {
-        //         subject = subject,
-        //         body = new { contentType = "HTML", content = htmlBody },
-        //         from = new
-        //         {
-        //             emailAddress = new
-        //             {
-        //                 name = fromName,
-        //                 address = fromEmail
-        //             }
-        //         },
-        //         toRecipients = new[]
-        //         {
-        //             new { emailAddress = new { address = email } }
-        //         },
-        //         isRead = false,
-        //         singleValueExtendedProperties = new[]
-        //         {
-        //             new { id = "Integer 0x0E07", value = "1" }
-        //         }
-        //     };
-        //
-        //     var request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{email}/mailFolders/inbox/messages");
-        //     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        //     request.Content = new StringContent(JsonSerializer.Serialize(message), Encoding.UTF8, "application/json");
-        //
-        //     HttpResponseMessage response = null;
-        //     try
-        //     {
-        //         response = await _httpClient.SendAsync(request);
-        //
-        //         if (response.StatusCode == (HttpStatusCode)429) // Too Many Requests
-        //         {
-        //             var retryAfter = response.Headers.Contains("Retry-After") 
-        //                 ? response.Headers.GetValues("Retry-After").FirstOrDefault() 
-        //                 : "unknown";
-        //
-        //             _loggingService.LogAsync($"Throttling detected. Retry after: {retryAfter} seconds", null, LogType.Warning).Wait();
-        //             
-        //             return;
-        //         }
-        //
-        //         response.EnsureSuccessStatusCode();
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _loggingService.LogAsync("Error while injecting email", new[] { ex.Message }, LogType.Error).Wait();
-        //     }
-        // }
 
         private async Task InjectEmailWithRetryAsync(string email, string htmlBody, string token, string fromEmail,
             string fromName, string subject)
