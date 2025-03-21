@@ -25,7 +25,7 @@
     },
     "apiBaseUrl": {
       "type": "string",
-      "defaultValue": "https://outthink-api-public.ot-services-dev.net",
+      "defaultValue": "https://outthink-api-public.ot-services-prd.net",
       "metadata": {
         "description": "(Optional) Base URL for the email injector API."
       }
