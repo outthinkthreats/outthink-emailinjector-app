@@ -68,7 +68,7 @@
           "alwaysOn": true,
           "appSettings": [
             {
-              "name": "KeyVault:Url",
+              "name": "KeyVaultUrl",
               "value": "[parameters('keyVaultUrl')]"
             },
             {
