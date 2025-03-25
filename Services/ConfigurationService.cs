@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 
@@ -40,6 +41,9 @@ namespace OutThink.EmailInjectorApp.Services
                 { "OtApiKey", GetSecret("OtApiKey") },
                 { "OtCustomerId", GetSecret("OTCustomerId") }
             };
+            
+            _logger.LogInformation("Retrieved configuration");
+            _logger.LogInformation(GetAllSafeBeautifyString());
 
             ValidateConfiguration();
         }
@@ -112,5 +116,33 @@ namespace OutThink.EmailInjectorApp.Services
 
             return _settings[key]!;
         }
+        
+        public Dictionary<string, string> GetAllSafe()
+        {
+            return _settings.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Key is "ClientSecret" or "OtApiKey"
+                    ? MaskSecret(kvp.Value)
+                    : kvp.Value ?? "[null]"
+            );
+        }
+        
+        public string GetAllSafeBeautifyString()
+        {
+            var result = GetAllSafe();
+            return JsonSerializer.Serialize(
+                result,
+                new JsonSerializerOptions { WriteIndented = true }
+            );
+        }
+
+        private static string MaskSecret(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length <= 10)
+                return "**********";
+
+            return $"{value[..3]}*****{value[^3..]}";
+        }
+
     }
 }

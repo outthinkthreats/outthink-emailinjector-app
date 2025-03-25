@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using OutThink.EmailInjectorApp.Services;
 using OutThink.EmailInjectorApp.Workers;
 
@@ -5,6 +8,8 @@ namespace OutThink.EmailInjectorApp
 {
     public class Program
     {
+        
+        private static readonly DateTime StartTime = DateTime.UtcNow;
         public static void Main(string[] args)
         {
             CreateHostBuilder(args).Build().Run();
@@ -15,8 +20,42 @@ namespace OutThink.EmailInjectorApp
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
                     config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                        .AddUserSecrets<Program>()
-                        .AddEnvironmentVariables();
+                          .AddUserSecrets<Program>()
+                          .AddEnvironmentVariables();
+                })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.ConfigureKestrel(serverOptions =>
+                    {
+                        serverOptions.ListenAnyIP(8080); // Puerto HTTP requerido por Azure Managed Apps
+                    });
+
+                    webBuilder.Configure(app =>
+                    {
+                        app.Run(async context =>
+                        {
+                            if (context.Request.Path == "/")
+                            {
+                                await context.Response.WriteAsync($"OK");
+                            }
+                            else if (context.Request.Path == "/status")
+                            {
+                                await context.Response.WriteAsync($"Worker running. Started at {StartTime:O}");
+                            }
+                            else if (context.Request.Path == "/config")
+                            {
+                                var config = app.ApplicationServices.GetRequiredService<ConfigurationService>();
+                                var vars = config.GetAllSafe();
+
+                                context.Response.ContentType = "application/json";
+                                await context.Response.WriteAsJsonAsync(vars);
+                            }
+                            else
+                            {
+                                context.Response.StatusCode = 404;
+                            }
+                        });
+                    });
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
