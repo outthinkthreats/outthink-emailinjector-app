@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Identity.Client;
 using OutThink.EmailInjectorApp.Models;
 using Polly;
@@ -75,13 +76,14 @@ namespace OutThink.EmailInjectorApp.Services
                 var messageToBeconfirmed = new List<Guid>();
                 var messageToBeFailed = new List<FailDmiMessage>();
                 pendingMessages = false;
+                var token = await GetAccessTokenForGraphApiAsync();
                 await foreach (var msg in GetPendingMessages())
                 {
                     pendingMessages = true;
-                    var token = await GetAccessTokenForGraphApiAsync();
+                    
                     try
                     {
-                        await InjectEmailWithRetryAsync(msg.To, msg.Body, token, msg.From, msg.Alias, msg.Subject);
+                        await InjectEmailWithRetryAsync(msg.To, msg.Body, token, msg.From, msg.Alias, msg.Subject, msg.Headers);
                         messageToBeconfirmed.Add(msg.MessageId);
                     }
                     catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
@@ -115,7 +117,7 @@ namespace OutThink.EmailInjectorApp.Services
                 var response = await _httpRequestService.SendAsync(HttpMethod.Post,
                     "/communications/messages/dmi/confirm", confirmation);
                 response.EnsureSuccessStatusCode();
-                _loggingService.LogAsync($"{messageIds.Count()} message confirmed", logType: LogType.Error).Wait();
+                _loggingService.LogAsync($"{messageIds.Count()} message confirmed", logType: LogType.Info).Wait();
             }
             catch (Exception ex)
             {
@@ -141,7 +143,7 @@ namespace OutThink.EmailInjectorApp.Services
         }
 
         private async Task InjectEmailWithRetryAsync(string email, string htmlBody, string token, string fromEmail,
-            string fromName, string subject)
+            string fromName, string subject, Dictionary<string, string> headers)
         {
             var message = new
             {
@@ -150,11 +152,15 @@ namespace OutThink.EmailInjectorApp.Services
                 from = new { emailAddress = new { name = fromName, address = fromEmail } },
                 toRecipients = new[] { new { emailAddress = new { address = email } } },
                 isRead = false,
+                internetMessageHeaders =
+                    (headers ?? new Dictionary<string, string>()).Select(x => new { name = x.Key, value = x.Value }).ToArray(),
                 singleValueExtendedProperties = new[]
                 {
                     new { id = "Integer 0x0E07", value = "1" }
-                }
+                },
             };
+            
+            
 
             var request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{email}/mailFolders/inbox/messages");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

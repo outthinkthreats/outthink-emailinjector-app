@@ -12,7 +12,7 @@
     "sku": {
       "type": "string",
       "defaultValue": "B1",
-      "allowedValues": [ "B1", "B2", "S1", "S2" ],
+      "allowedValues": ["B1", "B2", "S1", "S2"],
       "metadata": {
         "description": "App Service Plan pricing tier (SKU)."
       }
@@ -29,11 +29,25 @@
       "metadata": {
         "description": "(Optional) Base URL for the email injector API."
       }
+    },
+    "artifactsLocation": {
+      "type": "string",
+      "defaultValue": "[if(contains(deployment().properties, 'templateLink'), concat(substring(deployment().properties.templateLink.uri, 0, add(lastIndexOf(deployment().properties.templateLink.uri, '/'), 1)), ''), 'https://')]",
+      "metadata": {
+        "description": "The base URI of the Managed Application artifacts."
+      }
+    },
+    "artifactsLocationSasToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "(Optional) SAS token for the artifactsLocation if required."
+      }
     }
   },
   "variables": {
-    "appName": "outthink-emailinjectorapp",
-    "planName": "outthink-emailinjectorapp-plan"
+    "appName": "outthink-emailinjectorappdev",
+    "planName": "outthink-emailinjectorappdev-plan"
   },
   "resources": [
     {
@@ -65,29 +79,29 @@
         "siteConfig": {
           "linuxFxVersion": "DOTNETCORE|8.0",
           "appCommandLine": "dotnet /home/site/wwwroot/OutThink.EmailInjectorApp.dll",
-          "alwaysOn": true,
-          "appSettings": [
-            {
-              "name": "KeyVaultUrl",
-              "value": "[parameters('keyVaultUrl')]"
-            },
-            {
-              "name": "ApiBaseUrl",
-              "value": "[parameters('apiBaseUrl')]"
-            },
-            {
-              "name": "BatchSize",
-              "value": "50"  
-            },
-            {
-              "name": "SkipConfirmation",
-              "value": "false"
-            }
-          ]
+          "alwaysOn": true
         }
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]"
+      ],
+      "resources": [
+        {
+          "type": "config",
+          "name": "appsettings",
+          "apiVersion": "2021-02-01",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('appName'))]"
+          ],
+          "properties": {
+            "WEBSITE_RUN_FROM_PACKAGE": "[uri(parameters('artifactsLocation'), concat('app.zip', parameters('artifactsLocationSasToken')))]",
+            "ASPNETCORE_URLS": "http://0.0.0.0:8080",
+            "KeyVaultUrl": "[parameters('keyVaultUrl')]",
+            "ApiBaseUrl": "[parameters('apiBaseUrl')]",
+            "BatchSize": "50",
+            "SkipConfirmation": "false"
+          }
+        }
       ]
     }
   ],

@@ -64,9 +64,9 @@
     ],
     "outputs": {
       "sku": "[basics('sku')]",
-      "KeyVaultUrl": "[basics('keyVaultUrl')]",
-      "ApiBaseUrl": "[steps('optionalSettings').apiBaseUrl]"
-    },
-    "resourceTypes": []
+      "keyVaultUrl": "[basics('keyVaultUrl')]",
+      "apiBaseUrl": "[steps('optionalSettings').apiBaseUrl]",
+      "location": "[location()]"
+    }
   }
 }

@@ -7,5 +7,6 @@ public record DmiMessage
     string From,
     string To,
     string Alias,
-    string Subject
+    string Subject,
+    Dictionary<string, string> Headers
 );
