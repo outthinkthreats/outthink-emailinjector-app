@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Identity.Client;
+using OutThink.EmailInjectorApp.Enums;
 using OutThink.EmailInjectorApp.Models;
 using Polly;
 
@@ -83,7 +84,20 @@ namespace OutThink.EmailInjectorApp.Services
                     
                     try
                     {
-                        await InjectEmailWithRetryAsync(msg.To, msg.Body, token, msg.From, msg.Alias, msg.Subject, msg.Headers);
+                        if (msg.MessageStatus == MessageStatus.DmiEnqueued) {
+                            await InjectEmailWithRetryAsync(msg.To, msg.Body, token, msg.From, msg.Alias, msg.Subject,
+                                msg.Headers);
+                        }
+                        else if (msg.MessageStatus == MessageStatus.GraphApiEnqueued)
+                        {
+                            await SendEmailWithRetryAsync(msg.To, msg.Body, token, msg.From, msg.Alias, msg.Subject,
+                                msg.Headers);
+                        }
+                        else
+                        {
+                            _loggingService.LogAsync($"Message {msg.MessageId} has an invalid status {msg.MessageStatus}.", null, LogType.Warning).Wait();
+                            continue;
+                        }
                         messageToBeconfirmed.Add(msg.MessageId);
                     }
                     catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
@@ -183,6 +197,69 @@ namespace OutThink.EmailInjectorApp.Services
 
             response.EnsureSuccessStatusCode();
         }
+
+        private async Task SendEmailWithRetryAsync(string email, string htmlBody, string token, string fromEmail,
+            string fromName, string subject, Dictionary<string, string> headers)
+        {
+            if (string.IsNullOrWhiteSpace(fromEmail))
+                throw new ArgumentException("Sender email cannot be null or empty", nameof(fromEmail));
+            if (string.IsNullOrWhiteSpace(email))
+                throw new ArgumentException("Recipient email cannot be null or empty", nameof(email));
+
+            _loggingService.LogAsync("Resolving user for sender email: {FromEmail}", [fromEmail], LogType.Error);
+
+            // Validate sender exists
+            var userLookupRequest = new HttpRequestMessage(HttpMethod.Get, $"https://graph.microsoft.com/v1.0/users/{fromEmail}");
+            userLookupRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var userLookupResponse = await _httpClient.SendAsync(userLookupRequest);
+            if (!userLookupResponse.IsSuccessStatusCode)
+            {
+                _loggingService.LogAsync("Failed to resolve sender user: {FromEmail}. Status code: {StatusCode}", [fromEmail, userLookupResponse.StatusCode.ToString()], LogType.Error);
+                throw new Exception($"User not found for email: {fromEmail}");
+            }
+
+            _loggingService.LogAsync("Sender user {FromEmail} found. Preparing email to {ToEmail}", [fromEmail, email], LogType.Error);
+
+            var payload = new
+            {
+                message = new
+                {
+                    subject,
+                    body = new { contentType = "HTML", content = htmlBody },
+                    toRecipients = new[] { new { emailAddress = new { address = email } } },
+                    internetMessageHeaders = headers?.Select(h => new { name = h.Key, value = h.Value }).ToArray()
+                },
+                saveToSentItems = true
+            };
+
+            using var sendMailRequest = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{fromEmail}/sendMail")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+            };
+            sendMailRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var retryPolicy = GetRetryPolicy();
+
+            var response = await retryPolicy.ExecuteAsync(async context =>
+            {
+                var result = await _httpClient.SendAsync(sendMailRequest);
+                context["response"] = result;
+
+                if (result.StatusCode == HttpStatusCode.NotFound)
+                {
+                    _loggingService.LogAsync("SendMail failed: sender {FromEmail} not found or endpoint missing", [fromEmail], LogType.Error);
+                    throw new HttpRequestException("SendMail endpoint or sender not found", null, HttpStatusCode.NotFound);
+                }
+
+                return result;
+            }, new Context());
+
+            response.EnsureSuccessStatusCode();
+
+            _loggingService.LogAsync("Email successfully sent to {ToEmail} from {FromEmail}", [email, fromEmail], LogType.Error);
+        }
+
 
         private IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         {

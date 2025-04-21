@@ -1,3 +1,5 @@
+using OutThink.EmailInjectorApp.Enums;
+
 namespace OutThink.EmailInjectorApp.Models;
 
 public record DmiMessage
@@ -8,5 +10,6 @@ public record DmiMessage
     string To,
     string Alias,
     string Subject,
-    Dictionary<string, string> Headers
+    Dictionary<string, string> Headers,
+    MessageStatus MessageStatus
 );
