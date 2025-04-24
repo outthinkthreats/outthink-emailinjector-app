@@ -74,7 +74,7 @@ namespace OutThink.EmailInjectorApp.Services
             
             do
             {
-                var messageToBeconfirmed = new List<Guid>();
+                var messageToBeConfirmed = new List<Guid>();
                 var messageToBeFailed = new List<FailDmiMessage>();
                 pendingMessages = false;
                 var token = await GetAccessTokenForGraphApiAsync();
@@ -98,11 +98,11 @@ namespace OutThink.EmailInjectorApp.Services
                             _loggingService.LogAsync($"Message {msg.MessageId} has an invalid status {msg.MessageStatus}.", null, LogType.Warning).Wait();
                             continue;
                         }
-                        messageToBeconfirmed.Add(msg.MessageId);
+                        messageToBeConfirmed.Add(msg.MessageId);
                     }
                     catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
                     {
-                        _loggingService.LogAsync($"Mailbox not found for email {msg.To}. Skipping.", null, LogType.Warning).Wait();
+                        _loggingService.LogAsync($"Mailbox not found for email {msg.MessageId}. Skipping.", null, LogType.Warning).Wait();
                         messageToBeFailed.Add(new FailDmiMessage(msg.MessageId, "Mailbox not found", false));
                     }
                     catch (HttpRequestException ex)
@@ -116,7 +116,7 @@ namespace OutThink.EmailInjectorApp.Services
                         messageToBeFailed.Add(new FailDmiMessage(msg.MessageId, ex.Message, true));
                     }
                     // if we are not autoconfirming on reception (SkipConfirmation is false), we need to confirm the message
-                    if (!_skipConfirmation && messageToBeconfirmed.Any()) await ConfirmInjectedMessagesAsync(messageToBeconfirmed);
+                    if (!_skipConfirmation && messageToBeConfirmed.Any()) await ConfirmInjectedMessagesAsync(messageToBeConfirmed);
                     if (messageToBeFailed.Any()) await FailInjectedMessagesAsync(new FailDmiMessages(messageToBeFailed));
                 }
             } while (pendingMessages);
@@ -206,7 +206,7 @@ namespace OutThink.EmailInjectorApp.Services
             if (string.IsNullOrWhiteSpace(email))
                 throw new ArgumentException("Recipient email cannot be null or empty", nameof(email));
 
-            _loggingService.LogAsync("Resolving user for sender email: {FromEmail}", [fromEmail], LogType.Error);
+            _loggingService.LogAsync("Resolving user for sender email: {FromEmail}", [fromEmail], LogType.Info);
 
             // Validate sender exists
             var userLookupRequest = new HttpRequestMessage(HttpMethod.Get, $"https://graph.microsoft.com/v1.0/users/{fromEmail}");
@@ -219,7 +219,7 @@ namespace OutThink.EmailInjectorApp.Services
                 throw new Exception($"User not found for email: {fromEmail}");
             }
 
-            _loggingService.LogAsync("Sender user {FromEmail} found. Preparing email to {ToEmail}", [fromEmail, email], LogType.Error);
+            _loggingService.LogAsync("Sender user {FromEmail} found. Preparing email", [fromEmail], LogType.Info);
 
             var payload = new
             {
@@ -257,7 +257,7 @@ namespace OutThink.EmailInjectorApp.Services
 
             response.EnsureSuccessStatusCode();
 
-            _loggingService.LogAsync("Email successfully sent to {ToEmail} from {FromEmail}", [email, fromEmail], LogType.Error);
+            _loggingService.LogAsync("Email successfully sent to user from {FromEmail}", [fromEmail], LogType.Info);
         }
 
 
