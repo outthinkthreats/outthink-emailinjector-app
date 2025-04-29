@@ -9,12 +9,21 @@ using Polly;
 
 namespace OutThink.EmailInjectorApp.Clients;
 
+/// <summary>
+/// Handles Microsoft Graph API operations for sending and injecting emails, retrieving tokens, and resolving user identities.
+/// </summary>
 public class GraphApiClient
 {
     private readonly HttpClient _client;
     private readonly ConfigurationService _config;
     private readonly IAsyncPolicy<HttpResponseMessage> _retry;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GraphApiClient"/> class.
+    /// </summary>
+    /// <param name="client">Injected <see cref="HttpClient"/> for API calls.</param>
+    /// <param name="config">Configuration service to access app credentials.</param>
+    /// <param name="loggingService">Logging service used during retry attempts.</param>
     public GraphApiClient(HttpClient client, ConfigurationService config, LoggingService loggingService)
     {
         _client = client;
@@ -25,6 +34,10 @@ public class GraphApiClient
         });
     }
 
+    /// <summary>
+    /// Retrieves a valid Azure AD access token for Microsoft Graph API using client credentials flow.
+    /// </summary>
+    /// <returns>The access token string.</returns>
     public async Task<string> GetAccessTokenAsync()
     {
         var app = ConfidentialClientApplicationBuilder
@@ -37,6 +50,11 @@ public class GraphApiClient
         return token.AccessToken;
     }
 
+    /// <summary>
+    /// Injects an email directly into the mailbox of the target user.
+    /// </summary>
+    /// <param name="msg">The message object containing email details.</param>
+    /// <param name="token">Access token for authentication.</param>
     public async Task InjectEmailAsync(DmiMessage msg, string token)
     {
         var payload = new
@@ -60,6 +78,13 @@ public class GraphApiClient
         response.EnsureSuccessStatusCode();
     }
 
+    /// <summary>
+    /// Sends an email on behalf of a user using the Microsoft Graph <c>/sendMail</c> endpoint.
+    /// Verifies the sender exists before sending.
+    /// </summary>
+    /// <param name="msg">The message object containing email details.</param>
+    /// <param name="token">Access token for authentication.</param>
+    /// <exception cref="Exception">Thrown if the sender user does not exist.</exception>
     public async Task SendEmailAsync(DmiMessage msg, string token)
     {
         // Validate sender
@@ -94,6 +119,12 @@ public class GraphApiClient
         response.EnsureSuccessStatusCode();
     }
     
+    /// <summary>
+    /// Retrieves the Azure AD ObjectId for a user given their principal name (email).
+    /// </summary>
+    /// <param name="userPrincipalName">The user's email or UPN.</param>
+    /// <param name="token">Access token for authentication.</param>
+    /// <returns>The user's Azure ObjectId as a string.</returns>
     public async Task<string> GetUserObjectIdAsync(string userPrincipalName, string token)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://graph.microsoft.com/v1.0/users/{userPrincipalName}");
