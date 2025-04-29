@@ -1,4 +1,4 @@
-namespace OutThink.EmailInjectorApp.Enums;
+namespace OutThink.EmailInjectorApp.Constants;
 
 public enum MessageStatus
 {

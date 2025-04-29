@@ -1,4 +1,4 @@
-using OutThink.EmailInjectorApp.Enums;
+using OutThink.EmailInjectorApp.Constants;
 
 namespace OutThink.EmailInjectorApp.Models;
 
