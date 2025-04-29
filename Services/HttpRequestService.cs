@@ -8,25 +8,12 @@ namespace OutThink.EmailInjectorApp.Services;
 /// Provides a wrapper around <see cref="HttpClient"/> to send authenticated HTTP requests
 /// using configuration values for headers and base URL.
 /// </summary>
-public class HttpRequestService
+/// <param name="httpClient">Injected <see cref="HttpClient"/> instance.</param>
+/// <param name="configurationService">Injected service for resolving API configuration.</param>
+/// <param name="logger">Logger for error and request diagnostics.</param>
+
+public class HttpRequestService(HttpClient httpClient, ConfigurationService configurationService, ILogger<HttpRequestService> logger)
 {
-    private readonly HttpClient _httpClient;
-    private readonly ConfigurationService _configurationService;
-    private readonly ILogger<HttpRequestService> _logger;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="HttpRequestService"/> class.
-    /// </summary>
-    /// <param name="httpClient">Injected <see cref="HttpClient"/> instance.</param>
-    /// <param name="configurationService">Injected service for resolving API configuration.</param>
-    /// <param name="logger">Logger for error and request diagnostics.</param>
-    public HttpRequestService(HttpClient httpClient, ConfigurationService configurationService, ILogger<HttpRequestService> logger)
-    {
-        _httpClient = httpClient;
-        _configurationService = configurationService;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Builds an <see cref="HttpRequestMessage"/> with the appropriate headers and content,
     /// using configuration for authentication and customer context.
@@ -43,13 +30,13 @@ public class HttpRequestService
         
         try
         {
-            apiBaseUrl = _configurationService.Get(ConfigurationKeys.ApiBaseUrl);
-            otApiKey = _configurationService.Get(ConfigurationKeys.OtApiKey);
-            otCustomerId = _configurationService.Get(ConfigurationKeys.OtCustomerId);
+            apiBaseUrl = configurationService.Get(ConfigurationKeys.ApiBaseUrl);
+            otApiKey = configurationService.Get(ConfigurationKeys.OtApiKey);
+            otCustomerId = configurationService.Get(ConfigurationKeys.OtCustomerId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error while fetching configuration");
+            logger.LogError(ex, "Error while fetching configuration");
         }
         
         var request = new HttpRequestMessage(method, $"{apiBaseUrl}{endpoint}");
@@ -82,6 +69,6 @@ public class HttpRequestService
         }
 
         var request = CreateRequest(method, endpoint, content);
-        return await _httpClient.SendAsync(request);
+        return await httpClient.SendAsync(request);
     }
 }
