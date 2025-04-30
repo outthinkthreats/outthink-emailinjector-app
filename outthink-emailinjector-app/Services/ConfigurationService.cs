@@ -32,10 +32,6 @@ namespace OutThink.EmailInjectorApp.Services
             // Client has to already granted access to the KV in the portal for the above ClientId
             var keyVaultUrl = _config[ConfigurationKeys.KeyVaultUrl];
             
-            _logger.LogInformation("🔥 AppInsights is wired up at {Time}", DateTime.UtcNow);
-            _logger.LogError("🔥 Error AppInsights is wired up at {Time}", DateTime.UtcNow);
-            _logger.LogWarning("🔥 Warning AppInsights is wired up at {Time}", DateTime.UtcNow);
-            
             if (string.IsNullOrWhiteSpace(keyVaultUrl))
             {
                 _logger.LogError("KeyVaultUrl is empty");
