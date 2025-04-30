@@ -199,7 +199,7 @@ namespace OutThink.EmailInjectorApp.Services
             _settings[ConfigurationKeys.OtApiKey]       = await GetSecretAsync(ConfigurationKeys.OtApiKey);
             _settings[ConfigurationKeys.OtCustomerId]   = await GetSecretAsync(ConfigurationKeys.OtCustomerId);
 
-            _logger.LogInformation("Configuration reloaded:"+ GetAllSafeBeautifyString());
+            _logger.LogInformation("Configuration reloaded:\n"+ GetAllSafeBeautifyString());
 
             ValidateConfiguration();
         }
