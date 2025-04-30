@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <EnablePreviewFeatures>True</EnablePreviewFeatures>
+        <RootNamespace>OutThink.EmailInjectorApp</RootNamespace>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Outthink.EmailInjectorApp.Tests" />
+        <PackageReference Include="Microsoft.Identity.Client" Version="4.70.0" />
+        <PackageReference Include="Azure.Identity" Version="1.14.0-beta.2" />
+        <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+        <PackageReference Include="Polly" Version="8.5.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="AzureDeployment-dev\createUiDefinition.json" />
+      <_ContentIncludedByDefault Remove="AzureDeployment-dev\mainTemplate.json" />
+      <_ContentIncludedByDefault Remove="AzureDeployment-dev\metadata.json" />
+      <_ContentIncludedByDefault Remove="AzureDeployment-stg\createUiDefinition.json" />
+      <_ContentIncludedByDefault Remove="AzureDeployment-stg\mainTemplate.json" />
+      <_ContentIncludedByDefault Remove="AzureDeployment-stg\metadata.json" />
+    </ItemGroup>
+
+</Project>
