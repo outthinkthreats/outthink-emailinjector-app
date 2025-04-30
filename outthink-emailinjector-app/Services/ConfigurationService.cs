@@ -23,6 +23,7 @@ namespace OutThink.EmailInjectorApp.Services
         /// </summary>
         /// <param name="config">The application configuration provider.</param>
         /// <param name="logger"></param>
+        /// To get logs from AppInsights, use the following: traces | where customDimensions.CategoryName == "OutThink" | order by timestamp desc
         public ConfigurationService(IConfiguration config, ILoggerFactory logger)
         {
             
