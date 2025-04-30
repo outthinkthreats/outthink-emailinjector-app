@@ -15,25 +15,30 @@ namespace OutThink.EmailInjectorApp.Services
         private readonly IConfiguration _config;
         private readonly SecretClient _keyVaultClient;
         private readonly Dictionary<string, string?> _settings;
-        private readonly ILogger<ConfigurationService> _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ConfigurationService"/> class.
         /// It validates KeyVault connectivity and prepares for configuration loading.
         /// </summary>
         /// <param name="config">The application configuration provider.</param>
-        /// <param name="logger">Logger for configuration diagnostics and error reporting.</param>
-        public ConfigurationService(IConfiguration config, ILogger<ConfigurationService> logger)
+        /// <param name="logger"></param>
+        public ConfigurationService(IConfiguration config, ILoggerFactory logger)
         {
             
             _config = config;
-            _logger = logger;
+            _logger = logger.CreateLogger("OutThink");
             // Connect to Client KV
             // Client has to already granted access to the KV in the portal for the above ClientId
             var keyVaultUrl = _config[ConfigurationKeys.KeyVaultUrl];
+            
+            _logger.LogInformation("🔥 AppInsights is wired up at {Time}", DateTime.UtcNow);
+            _logger.LogError("🔥 Error AppInsights is wired up at {Time}", DateTime.UtcNow);
+            _logger.LogWarning("🔥 Warning AppInsights is wired up at {Time}", DateTime.UtcNow);
+            
             if (string.IsNullOrWhiteSpace(keyVaultUrl))
             {
-                logger.LogError("KeyVaultUrl is empty");
+                _logger.LogError("KeyVaultUrl is empty");
                 throw new Exception("KeyVault URL is missing in configuration.");
             }
             
@@ -57,7 +62,7 @@ namespace OutThink.EmailInjectorApp.Services
                 var secretValue = (await _keyVaultClient.GetSecretAsync(secretKey)).Value.Value;
                 if (string.IsNullOrWhiteSpace(secretValue))
                     throw new Exception($"Secret {secretKey} is null or empty.");
-                _logger.LogInformation($"Secret '{secretKey}' loaded from KeyVault.");
+                _logger.LogDebug($"Secret '{secretKey}' loaded from KeyVault.");
                 return secretValue;
             }
             catch (Exception ex)
@@ -90,20 +95,20 @@ namespace OutThink.EmailInjectorApp.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Could not fetch secret '{configKey}' from Key Vault. Falling back. Error: {ex.Message}");
+                _logger.LogDebug($"Could not fetch secret '{configKey}' from Key Vault. Falling back. Error: {ex.Message}");
             }
 
             if (string.IsNullOrWhiteSpace(value))
             {
                 value = _config[configKey];
                 if (!string.IsNullOrWhiteSpace(value))
-                    _logger.LogInformation($"Value for '{configKey}' loaded from app settings or environment.");
+                    _logger.LogDebug($"Value for '{configKey}' loaded from app settings or environment.");
             }
 
             if (string.IsNullOrWhiteSpace(value) && defaultValue != null)
             {
                 value = defaultValue;
-                _logger.LogInformation($"Using default value for '{configKey}': {defaultValue}");
+                _logger.LogDebug($"Using default value for '{configKey}': {defaultValue}");
             }
 
             return value ?? throw new Exception($"Missing required configuration for '{configKey}' (KeyVault: '{configKey}')");
@@ -185,7 +190,7 @@ namespace OutThink.EmailInjectorApp.Services
         {
             _settings.Clear();
             
-            _logger.LogInformation("Reloading configuration from KeyVault and app settings...");
+            _logger.LogDebug("Reloading configuration from KeyVault and app settings...");
 
             _settings[ConfigurationKeys.ApiBaseUrl]     = await GetSecretOrConfigAsync(ConfigurationKeys.ApiBaseUrl);
             _settings[ConfigurationKeys.BatchSize]      = await GetSecretOrConfigAsync(ConfigurationKeys.BatchSize, "10");
