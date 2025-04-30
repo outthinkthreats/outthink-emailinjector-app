@@ -6,6 +6,9 @@ using OutThink.EmailInjectorApp.Workers;
 var builder = WebApplication.CreateBuilder(args);
 
 // Enable Application Insights
+builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+builder.Logging.AddFilter("System", LogLevel.Warning);
+builder.Logging.AddFilter("OutThink", LogLevel.Information);
 builder.Services.AddApplicationInsightsTelemetry();
 
 // Load configuration
