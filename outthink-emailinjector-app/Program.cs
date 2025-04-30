@@ -5,6 +5,9 @@ using OutThink.EmailInjectorApp.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Enable Application Insights
+builder.Services.AddApplicationInsightsTelemetry();
+
 // Load configuration
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
