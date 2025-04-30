@@ -5,13 +5,18 @@ using OutThink.EmailInjectorApp.Models;
 
 namespace OutThink.EmailInjectorApp.Services
 {
+
+    public class OutThink
+    {
+    }
+
     /// <summary>
     /// Handles logging messages to both a remote logging endpoint and the local application log stream.
     /// </summary>
     public class LoggingService: ILoggingService
     {
         private readonly IHttpRequestService _httpRequestService;
-        private readonly ILogger<LoggingService> _logger;
+        private readonly ILogger _logger;
         private readonly string _appName;
 
         /// <summary>
@@ -19,11 +24,12 @@ namespace OutThink.EmailInjectorApp.Services
         /// </summary>
         /// <param name="httpRequestService">Service used to send logs to a remote logging endpoint.</param>
         /// <param name="logger">Local logger for internal application logs.</param>
+        /// <param name="loggerFactory"></param>
         /// <param name="config">Application configuration to resolve app name.</param>
-        public LoggingService(IHttpRequestService httpRequestService, ILogger<LoggingService> logger, IConfiguration config)
+        public LoggingService(IHttpRequestService httpRequestService, ILoggerFactory loggerFactory, IConfiguration config)
         {
+            _logger = loggerFactory.CreateLogger("OutThink");
             _httpRequestService = httpRequestService;
-            _logger = logger;
             _appName = config["app:service"] ?? "EmailInjectorApp";
         }
 
@@ -73,6 +79,9 @@ namespace OutThink.EmailInjectorApp.Services
                     break;
                 case LogType.Error:
                     _logger.LogError(formatted);
+                    break;
+                case LogType.Debug:
+                    _logger.LogDebug(formatted);
                     break;
                 default:
                     _logger.LogInformation(formatted);
