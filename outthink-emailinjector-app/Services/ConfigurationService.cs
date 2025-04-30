@@ -23,6 +23,7 @@ namespace OutThink.EmailInjectorApp.Services
         /// </summary>
         /// <param name="config">The application configuration provider.</param>
         /// <param name="logger"></param>
+        /// To get logs from AppInsights, use the following: traces | where customDimensions.CategoryName == "OutThink" | order by timestamp desc
         public ConfigurationService(IConfiguration config, ILoggerFactory logger)
         {
             
@@ -31,10 +32,6 @@ namespace OutThink.EmailInjectorApp.Services
             // Connect to Client KV
             // Client has to already granted access to the KV in the portal for the above ClientId
             var keyVaultUrl = _config[ConfigurationKeys.KeyVaultUrl];
-            
-            _logger.LogInformation("🔥 AppInsights is wired up at {Time}", DateTime.UtcNow);
-            _logger.LogError("🔥 Error AppInsights is wired up at {Time}", DateTime.UtcNow);
-            _logger.LogWarning("🔥 Warning AppInsights is wired up at {Time}", DateTime.UtcNow);
             
             if (string.IsNullOrWhiteSpace(keyVaultUrl))
             {
