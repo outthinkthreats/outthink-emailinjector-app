@@ -80,7 +80,8 @@ public class MessageProcessorService(
                     break;
                 case MessageStatus.GraphApiEnqueued:
                     await graph.SendEmailAsync(msg, token);
-                    await log.LogAsync($"Sent OK (userObjectId: {msg.To[..5]})");
+                    var maskedEmail = MaskEmail (msg.To ?? string.Empty);
+                    await log.LogAsync($"Sent OK (userObjectId: {maskedEmail})");
                     break;
                 default:
                     await log.LogAsync($"Invalid status for {msg.MessageId}: {msg.MessageStatus}", null, LogType.Warning);
@@ -171,5 +172,12 @@ public class MessageProcessorService(
         {
             await log.LogAsync("Fail marking failed", [ex.Message], LogType.Error);
         }
+    }
+    
+    private string MaskEmail(string email)
+    {
+        var at = email.IndexOf('@');
+        if (at < 2) return email;
+        return $"{email[0]}.....{email[at - 1]}{email[at..]}";
     }
 }

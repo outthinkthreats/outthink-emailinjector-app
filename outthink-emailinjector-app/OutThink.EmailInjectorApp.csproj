@@ -7,6 +7,7 @@
         <LangVersion>latest</LangVersion>
         <EnablePreviewFeatures>True</EnablePreviewFeatures>
         <RootNamespace>OutThink.EmailInjectorApp</RootNamespace>
+        <UseAppHost>false</UseAppHost>
         <OutputType>Exe</OutputType>
     </PropertyGroup>
 
@@ -18,15 +19,6 @@
         <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
         <PackageReference Include="Polly" Version="8.5.2" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <_ContentIncludedByDefault Remove="AzureDeployment-dev\createUiDefinition.json" />
-      <_ContentIncludedByDefault Remove="AzureDeployment-dev\mainTemplate.json" />
-      <_ContentIncludedByDefault Remove="AzureDeployment-dev\metadata.json" />
-      <_ContentIncludedByDefault Remove="AzureDeployment-stg\createUiDefinition.json" />
-      <_ContentIncludedByDefault Remove="AzureDeployment-stg\mainTemplate.json" />
-      <_ContentIncludedByDefault Remove="AzureDeployment-stg\metadata.json" />
     </ItemGroup>
 
 </Project>
