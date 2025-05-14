@@ -2,6 +2,8 @@ using OutThink.EmailInjectorApp.Constants;
 
 namespace OutThink.EmailInjectorApp.Models;
 
+public record MessageAttachment(string Name, string Data, string StorageLocation);
+
 public record DmiMessage
 (
     Guid MessageId,
@@ -11,5 +13,6 @@ public record DmiMessage
     string Alias,
     string Subject,
     Dictionary<string, string> Headers,
-    MessageStatus MessageStatus
+    MessageStatus MessageStatus, 
+    IEnumerable<MessageAttachment> Attachments
 );

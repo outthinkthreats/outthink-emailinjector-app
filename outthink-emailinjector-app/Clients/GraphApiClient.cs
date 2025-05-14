@@ -66,7 +66,15 @@ public class GraphApiClient: IGraphApiClient
             toRecipients = new[] { new { emailAddress = new { address = msg.To } } },
             isRead = false,
             internetMessageHeaders = msg.Headers?.Select(h => new { name = h.Key, value = h.Value }).ToArray(),
-            singleValueExtendedProperties = new[] { new { id = "Integer 0x0E07", value = "1" } }
+            attachments = msg.Attachments?.Select(a => new Dictionary<string, object>
+                {
+                    ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                    ["name"] = a.Name,
+                    ["contentType"] = "application/pdf",
+                    ["contentBytes"] = a.Data
+                }
+            ).ToArray(),
+            singleValueExtendedProperties = new[] { new { id = "Integer 0x0E07", value = "1" } },
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{msg.To}/mailFolders/inbox/messages")
@@ -105,6 +113,14 @@ public class GraphApiClient: IGraphApiClient
                 subject = msg.Subject,
                 body = new { contentType = "HTML", content = msg.Body },
                 toRecipients = new[] { new { emailAddress = new { address = msg.To } } },
+                attachments = msg.Attachments?.Select(a => new Dictionary<string, object>
+                    {
+                        ["@odata.type"] = "#microsoft.graph.fileAttachment",
+                        ["name"] = a.Name,
+                        ["contentType"] = "application/pdf",
+                        ["contentBytes"] = a.Data
+                    }
+                ).ToArray(),
                 internetMessageHeaders = msg.Headers?.Select(h => new { name = h.Key, value = h.Value }).ToArray()
             },
             saveToSentItems = true
