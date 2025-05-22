@@ -1,4 +1,4 @@
-# OutThink Direct Mail Injection (DMI) Proxy Applicaiton for Microsoft Azure
+# OutThink Direct Mail Injection (DMI) Proxy Application for Microsoft Azure
 
 ## Overview
 This application is a **proxy service** that enables the OutThink platform to securely send notifications and simulation emails to end-users using Microsoft **Graph API**.
