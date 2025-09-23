@@ -24,6 +24,8 @@ builder.Services.AddApplicationInsightsTelemetry();
 
 // Register services
 builder.Services.AddHttpClient<HttpRequestService>();
+builder.Services.AddHttpClient<IMessageProcessorService, MessageProcessorService>()
+    .AddStandardResilienceHandler();
 builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 builder.Services.AddSingleton<IHttpRequestService, HttpRequestService>();
 builder.Services.AddSingleton<ILoggingService, LoggingService>();

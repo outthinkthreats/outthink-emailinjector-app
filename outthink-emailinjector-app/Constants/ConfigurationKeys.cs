@@ -15,4 +15,5 @@ public static class ConfigurationKeys
     public const string OtCustomerId = "OTCustomerId";
 
     public const string KeyVaultUrl = "KeyVaultUrl";
+    public const string ThrottlingSeconds = "ThrottlingSeconds";
 }

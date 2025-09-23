@@ -1,3 +1,4 @@
+using System.Configuration;
 using System.Net;
 using System.Text.Json;
 using OutThink.EmailInjectorApp.Constants;
@@ -10,12 +11,28 @@ namespace OutThink.EmailInjectorApp.Services;
 /// Service responsible for processing pending messages.
 /// Handles message injection, sending, status updates, and error logging.
 /// </summary>
-public class MessageProcessorService(
-    IConfigurationService config,
-    ILoggingService log,
-    IGraphApiClient graph,
-    IHttpRequestService http): IMessageProcessorService
+public class MessageProcessorService: IMessageProcessorService
 {
+    private readonly IConfigurationService _config;
+    private readonly ILoggingService _log;
+    private readonly IGraphApiClient _graph;
+    private readonly IHttpRequestService _http;
+    private readonly int _throttleSeconds;
+
+    public MessageProcessorService(
+        IConfigurationService config,
+        ILoggingService log,
+        IGraphApiClient graph,
+        IHttpRequestService http)
+    {
+        _config = config;
+        _log = log;
+        _graph = graph;
+        _http = http;
+        _throttleSeconds = 7;
+        int.TryParse(config.Get(ConfigurationKeys.ThrottlingSeconds), out _throttleSeconds);
+    }
+    
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -27,8 +44,8 @@ public class MessageProcessorService(
     /// </summary>
     public async Task CheckAndProcessCampaignsAsync()
     {
-        var batchSize = int.Parse(config.Get(ConfigurationKeys.BatchSize));
-        var skipConfirmation = bool.Parse(config.Get(ConfigurationKeys.SkipConfirmation));
+        var batchSize = int.Parse(_config.Get(ConfigurationKeys.BatchSize));
+        var skipConfirmation = bool.Parse(_config.Get(ConfigurationKeys.SkipConfirmation));
         
         bool hasMore;
         do
@@ -36,11 +53,11 @@ public class MessageProcessorService(
             hasMore = false;
             var toConfirm = new List<Guid>();
             var toFail = new List<FailDmiMessage>();
-            var token = await graph.GetAccessTokenAsync();
+            var token = await _graph.GetAccessTokenAsync();
             
             if (string.IsNullOrWhiteSpace(token))
             {
-                await log.LogAsync("Access token is null or empty", null, LogType.Error);
+                await _log.LogAsync("Access token is null or empty", null, LogType.Error);
                 return;
             }
 
@@ -74,17 +91,18 @@ public class MessageProcessorService(
             switch (msg.MessageStatus)
             {
                 case MessageStatus.DmiEnqueued:
-                    var userObjectId = await graph.GetUserObjectIdAsync(msg.To, token);
-                    await graph.InjectEmailAsync(msg, token);
-                    await log.LogAsync($"Injected OK (userObjectId: {userObjectId})");
+                    var userObjectId = await _graph.GetUserObjectIdAsync(msg.To, token);
+                    await _graph.InjectEmailAsync(msg, token);
+                    await _log.LogAsync($"Injected OK (userObjectId: {userObjectId})");
                     break;
                 case MessageStatus.GraphApiEnqueued:
-                    await graph.SendEmailAsync(msg, token);
+                    await Task.Delay(TimeSpan.FromSeconds(_throttleSeconds));
+                    await _graph.SendEmailAsync(msg, token);
                     var maskedEmail = MaskEmail (msg.To ?? string.Empty);
-                    await log.LogAsync($"Sent OK (userObjectId: {maskedEmail})");
+                    await _log.LogAsync($"Sent OK (userObjectId: {maskedEmail})");
                     break;
                 default:
-                    await log.LogAsync($"Invalid status for {msg.MessageId}: {msg.MessageStatus}", null, LogType.Warning);
+                    await _log.LogAsync($"Invalid status for {msg.MessageId}: {msg.MessageStatus}", null, LogType.Warning);
                     return;
             }
 
@@ -92,12 +110,12 @@ public class MessageProcessorService(
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            await log.LogAsync($"Not found: {msg.To}", null, LogType.Warning);
+            await _log.LogAsync($"Not found: {msg.To}", null, LogType.Warning);
             toFail.Add(new FailDmiMessage(msg.MessageId, "Mailbox not found", false));
         }
         catch (Exception ex)
         {
-            await log.LogAsync($"FAIL: {ex.Message} (userObjectId: {msg.From})", null, LogType.Error);
+            await _log.LogAsync($"FAIL: {ex.Message} (userObjectId: {msg.From})", null, LogType.Error);
             toFail.Add(new FailDmiMessage(msg.MessageId, ex.Message, true));
         }
     }
@@ -113,7 +131,7 @@ public class MessageProcessorService(
     {
         var url = $"/communications/messages/dmi/pending/stream?batchSize={batchSize}&skipConfirmation={skipConfirmation}";
     
-        using var response = await http.SendAsync(HttpMethod.Get, url);
+        using var response = await _http.SendAsync(HttpMethod.Get, url);
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync();
@@ -131,12 +149,12 @@ public class MessageProcessorService(
             }
             catch (JsonException ex)
             {
-                await log.LogAsync($"JSON deserialization failed: {ex.Message}", null, LogType.Warning);
+                await _log.LogAsync($"JSON deserialization failed: {ex.Message}", null, LogType.Warning);
                 continue;
             }
 
             if (msg is not null) yield return msg;
-            else await log.LogAsync($"Invalid Message JSON (null result)", null, LogType.Warning);
+            else await _log.LogAsync($"Invalid Message JSON (null result)", null, LogType.Warning);
         }
     }
 
@@ -148,12 +166,12 @@ public class MessageProcessorService(
     {
         try
         {
-            var resp = await http.SendAsync(HttpMethod.Post, "/communications/messages/dmi/confirm", new { MessageIds = ids });
+            var resp = await _http.SendAsync(HttpMethod.Post, "/communications/messages/dmi/confirm", new { MessageIds = ids });
             resp.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
         {
-            await log.LogAsync("Confirm failed", [ex.Message], LogType.Error);
+            await _log.LogAsync("Confirm failed", [ex.Message], LogType.Error);
         }
     }
 
@@ -165,12 +183,12 @@ public class MessageProcessorService(
     {
         try
         {
-            var resp = await http.SendAsync(HttpMethod.Post, "/communications/messages/dmi/fail", failures);
+            var resp = await _http.SendAsync(HttpMethod.Post, "/communications/messages/dmi/fail", failures);
             resp.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
         {
-            await log.LogAsync("Fail marking failed", [ex.Message], LogType.Error);
+            await _log.LogAsync("Fail marking failed", [ex.Message], LogType.Error);
         }
     }
     

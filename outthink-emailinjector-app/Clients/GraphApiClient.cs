@@ -17,7 +17,6 @@ public class GraphApiClient: IGraphApiClient
 {
     private readonly HttpClient _client;
     private readonly IConfigurationService _config;
-    private readonly IAsyncPolicy<HttpResponseMessage> _retry;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GraphApiClient"/> class.
@@ -29,10 +28,6 @@ public class GraphApiClient: IGraphApiClient
     {
         _client = client;
         _config = config;
-        _retry = RetryPolicyFactory.CreateWithRetryAfter((result, time, attempt, ctx) =>
-        {
-            loggingService.LogAsync($"Retry {attempt}, status {result.Result?.StatusCode}, waiting {time.TotalSeconds} sec", null, LogType.Warning).Wait();
-        });
     }
 
     /// <summary>
@@ -56,6 +51,9 @@ public class GraphApiClient: IGraphApiClient
     /// </summary>
     /// <param name="msg">The message object containing email details.</param>
     /// <param name="token">Access token for authentication.</param>
+    /// <exception cref="HttpRequestException">Thrown if an error occurs during the HTTP request.</exception>
+    /// <exception cref="JsonException">Thrown if an error occurs while serializing the message content.</exception>
+    /// <exception cref="Exception">Thrown for other general errors during email injection.</exception>
     public async Task InjectEmailAsync(DmiMessage msg, string token)
     {
         var payload = new
@@ -83,7 +81,7 @@ public class GraphApiClient: IGraphApiClient
             Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
         };
 
-        var response = await _retry.ExecuteAsync(() => _client.SendAsync(request));
+        var response = await _client.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
 
@@ -132,7 +130,7 @@ public class GraphApiClient: IGraphApiClient
             Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
         };
 
-        var response = await _retry.ExecuteAsync(() => _client.SendAsync(request));
+        var response = await _client.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
     
@@ -147,7 +145,7 @@ public class GraphApiClient: IGraphApiClient
         var request = new HttpRequestMessage(HttpMethod.Get, $"https://graph.microsoft.com/v1.0/users/{userPrincipalName}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _retry.ExecuteAsync(() => _client.SendAsync(request));
+        var response = await _client.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
         using var stream = await response.Content.ReadAsStreamAsync();
