@@ -29,8 +29,10 @@ public class MessageProcessorService: IMessageProcessorService
         _log = log;
         _graph = graph;
         _http = http;
-        _throttleSeconds = 7;
-        int.TryParse(config.Get(ConfigurationKeys.ThrottlingSeconds), out _throttleSeconds);
+        if (!int.TryParse(config.Get(ConfigurationKeys.ThrottlingSeconds), out _throttleSeconds))
+        {
+            _throttleSeconds = 7;
+        };
     }
     
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -93,16 +95,16 @@ public class MessageProcessorService: IMessageProcessorService
                 case MessageStatus.DmiEnqueued:
                     var userObjectId = await _graph.GetUserObjectIdAsync(msg.To, token);
                     await _graph.InjectEmailAsync(msg, token);
-                    await _log.LogAsync($"Injected OK (userObjectId: {userObjectId})");
+                    await _log.LogAsync($"{DateTime.UtcNow} - Injected OK (userObjectId: {userObjectId})");
                     break;
                 case MessageStatus.GraphApiEnqueued:
                     await Task.Delay(TimeSpan.FromSeconds(_throttleSeconds));
                     await _graph.SendEmailAsync(msg, token);
                     var maskedEmail = MaskEmail (msg.To ?? string.Empty);
-                    await _log.LogAsync($"Sent OK (userObjectId: {maskedEmail})");
+                    await _log.LogAsync($"{DateTime.UtcNow} - Sent OK (userObjectId: {maskedEmail})");
                     break;
                 default:
-                    await _log.LogAsync($"Invalid status for {msg.MessageId}: {msg.MessageStatus}", null, LogType.Warning);
+                    await _log.LogAsync($"{DateTime.UtcNow} - Invalid status for {msg.MessageId}: {msg.MessageStatus}", null, LogType.Warning);
                     return;
             }
 
