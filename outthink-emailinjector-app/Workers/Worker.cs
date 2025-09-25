@@ -59,10 +59,9 @@ public class Worker : BackgroundService
     /// <param name="cancellationToken">Cancellation token to support graceful shutdown.</param>
     private async Task WaitUntilNextCycleAsync(CancellationToken cancellationToken)
     {
-        int delayMs = 60000;
-
-        if (!int.TryParse(_config.Get(ConfigurationKeys.CycleDelay), out delayMs))
+        if (!int.TryParse(_config.Get(ConfigurationKeys.CycleDelay), out var delayMs))
         {
+            delayMs = 60000;
             await _log.LogAsync("Invalid CycleDelay config, using default 60000ms", null, LogType.Warning);
         }
 

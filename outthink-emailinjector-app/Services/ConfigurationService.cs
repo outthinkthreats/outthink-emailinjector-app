@@ -190,6 +190,7 @@ namespace OutThink.EmailInjectorApp.Services
             _logger.LogDebug("Reloading configuration from KeyVault and app settings...");
 
             _settings[ConfigurationKeys.ApiBaseUrl]     = await GetSecretOrConfigAsync(ConfigurationKeys.ApiBaseUrl);
+            _settings[ConfigurationKeys.ThrottlingSeconds]     = await GetSecretOrConfigAsync(ConfigurationKeys.ThrottlingSeconds, "7");
             _settings[ConfigurationKeys.BatchSize]      = await GetSecretOrConfigAsync(ConfigurationKeys.BatchSize, "10");
             _settings[ConfigurationKeys.SkipConfirmation] = await GetSecretOrConfigAsync(ConfigurationKeys.SkipConfirmation, "false");
             _settings[ConfigurationKeys.CycleDelay]     = await GetSecretOrConfigAsync(ConfigurationKeys.CycleDelay, "60000");
