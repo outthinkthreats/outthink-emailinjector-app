@@ -60,7 +60,7 @@ namespace OutThink.EmailInjectorApp.Services
                 if (string.IsNullOrWhiteSpace(secretValue))
                     throw new Exception($"Secret {secretKey} is null or empty.");
                 _logger.LogDebug($"Secret '{secretKey}' loaded from KeyVault.");
-                return secretValue;
+                return secretValue.Trim();
             }
             catch (Exception ex)
             {
@@ -108,7 +108,7 @@ namespace OutThink.EmailInjectorApp.Services
                 _logger.LogDebug($"Using default value for '{configKey}': {defaultValue}");
             }
 
-            return value ?? throw new Exception($"Missing required configuration for '{configKey}' (KeyVault: '{configKey}')");
+            return value?.Trim() ?? throw new Exception($"Missing required configuration for '{configKey}' (KeyVault: '{configKey}')");
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace OutThink.EmailInjectorApp.Services
             if (!_settings.ContainsKey(key))
                 throw new Exception($"Configuration key '{key}' not found.");
 
-            return _settings[key]!;
+            return _settings[key]!.Trim();
         }
         
         /// <summary>
