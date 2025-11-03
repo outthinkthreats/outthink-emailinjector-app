@@ -34,6 +34,8 @@ _ReSharper*/
 packages/
 .idea
 .DS_Store
+.env
+../.env
 
 OutThink.Communications.Service/appsettings.service.local.json
 OutThink.Communications.Api/appsettings.api.local.json
