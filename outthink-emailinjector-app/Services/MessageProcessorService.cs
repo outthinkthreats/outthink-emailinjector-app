@@ -94,6 +94,7 @@ public class MessageProcessorService: IMessageProcessorService
             {
                 case MessageStatus.DmiEnqueued:
                     var userObjectId = await _graph.GetUserObjectIdAsync(msg.To, token);
+                    // await _graph.InjectEmailMimeAsync(msg, token);
                     await _graph.InjectEmailAsync(msg, token);
                     await _log.LogAsync($"{DateTime.UtcNow} - Injected OK (userObjectId: {userObjectId})");
                     break;
@@ -117,7 +118,7 @@ public class MessageProcessorService: IMessageProcessorService
         }
         catch (Exception ex)
         {
-            await _log.LogAsync($"FAIL: {ex.Message} (userObjectId: {msg.From})", null, LogType.Error);
+            await _log.LogAsync($"FAIL: {ex.Message} FROM: (userObjectId: {msg.From}), mgs.to {msg.To}", null, LogType.Error);
             toFail.Add(new FailDmiMessage(msg.MessageId, ex.Message, true));
         }
     }

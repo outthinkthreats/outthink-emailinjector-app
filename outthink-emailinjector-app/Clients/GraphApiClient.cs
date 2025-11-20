@@ -4,9 +4,11 @@ using System.Text.Json;
 using Microsoft.Identity.Client;
 using OutThink.EmailInjectorApp.Constants;
 using OutThink.EmailInjectorApp.Interfaces;
+using MimeKit;
+using System.Text.Json;
+using System.Text;
+using System.Net.Http.Headers;
 using OutThink.EmailInjectorApp.Models;
-using OutThink.EmailInjectorApp.Services;
-using Polly;
 
 namespace OutThink.EmailInjectorApp.Clients;
 
@@ -56,6 +58,15 @@ public class GraphApiClient: IGraphApiClient
     /// <exception cref="Exception">Thrown for other general errors during email injection.</exception>
     public async Task InjectEmailAsync(DmiMessage msg, string token)
     {
+        /* approach using flags */
+        
+        var test = new[] {
+            new { id = "Integer 0x0E07", value = "1" },
+            // new { id = "Integer 0x0E0B", value = "1" },  
+            // new { id = "Integer 0x003F", value = "1" },
+            // new { id = "Integer 0x1035", value = "1" } 
+        };
+        
         var payload = new
         {
             subject = msg.Subject,
@@ -72,7 +83,7 @@ public class GraphApiClient: IGraphApiClient
                     ["contentBytes"] = a.Data
                 }
             ).ToArray(),
-            singleValueExtendedProperties = new[] { new { id = "Integer 0x0E07", value = "1" } },
+            singleValueExtendedProperties = test,
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"https://graph.microsoft.com/v1.0/users/{msg.To}/mailFolders/inbox/messages")
@@ -82,6 +93,117 @@ public class GraphApiClient: IGraphApiClient
         };
 
         var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+// Important note: Replace this value with a REAL mailbox UPN that your app has permission to use as a sender (Send As).
+    const string BUZON_REAL_DE_ENVIO = "nicolas.fernandez@outthink.io"; 
+
+    public async Task InjectEmailMimeAsync(DmiMessage msg, string token)
+    {
+        // initial validation
+        if (string.IsNullOrWhiteSpace(msg.To))
+        {
+            throw new InvalidOperationException("Recipient address (msg.To) cannot be empty or null.");
+        }
+    
+        var mimeMessage = new MimeMessage();
+
+        // 1. sender configuration (Authorized mailbox to pass validation)
+        mimeMessage.From.Add(new MailboxAddress(msg.Alias, BUZON_REAL_DE_ENVIO));
+    
+        
+        // 2. Sender configuration (Authorized mailbox to pass validation)
+        try
+        {
+            var recipientList = InternetAddressList.Parse(msg.To);
+            foreach(var address in recipientList.Mailboxes)
+            {
+                mimeMessage.To.Add(address);
+            }
+        }
+        catch (ParseException ex)
+        {
+            throw new InvalidOperationException($"Recipient address(es) format is invalid: '{msg.To}'. Details: {ex.Message}");
+        }
+    
+        mimeMessage.Subject = msg.Subject;
+
+        // 3. Transport Headers and Custom Headers
+    
+        mimeMessage.Headers.Add("X-MS-Exchange-Organization-AuthAs", "Anonymous");
+    
+        mimeMessage.Headers.Add("X-Original-Sender", msg.From); 
+
+        if (msg.Headers != null)
+        {
+            foreach (var header in msg.Headers)
+            {
+                mimeMessage.Headers.Add(header.Key, header.Value);
+            }
+        }
+
+        var bodyBuilder = new BodyBuilder { HtmlBody = msg.Body };
+    
+        if (msg.Attachments != null)
+        {
+            foreach (var attachment in msg.Attachments)
+            {
+                byte[] fileBytes = Convert.FromBase64String(attachment.Data);
+                var contentType = ContentType.Parse("application/pdf"); 
+                bodyBuilder.Attachments.Add(attachment.Name, fileBytes, contentType);
+            }
+        }
+        mimeMessage.Body = bodyBuilder.ToMessageBody();
+
+        // serialize the MimeMessage to a Base64 string
+        string mimeContentBase64;
+        using (var memoryStream = new MemoryStream())
+        {
+            await mimeMessage.WriteToAsync(memoryStream);
+            mimeContentBase64 = Convert.ToBase64String(memoryStream.ToArray());
+        }
+        
+        // 4. Build the simple payload (only structure that does not cause schema errors)
+    
+        var payload = new
+        {
+            // Mime content is passed directly as the 'message' property of the send.
+            message = new
+            {
+                // Only include 'internetMessageContent' if the error above was transient or
+                // if the API version requires it.
+                internetMessageContent = mimeContentBase64
+            },
+            saveToSentItems = false 
+        };
+    
+        // 5. Send the email
+        var request = new HttpRequestMessage(HttpMethod.Post, 
+            $"https://graph.microsoft.com/v1.0/users/{BUZON_REAL_DE_ENVIO}/sendMail")
+        {
+            Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        // Capture error details
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Graph API Error: {response.StatusCode} - {errorContent}"); 
+        
+            // If error is the same, it means the API does not allow MIME 
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest && 
+                errorContent.Contains("'internetMessageContent' does not exist"))
+            {
+                throw new InvalidOperationException("Graph API rejected MIME structure. Cannot bypass Exchange Header Firewall via this endpoint.");
+            }
+
+            throw new HttpRequestException($"Response status code does not indicate success: {response.StatusCode}. Graph Detail: {errorContent}");
+        }
+
         response.EnsureSuccessStatusCode();
     }
 

@@ -16,6 +16,13 @@ public interface IGraphApiClient
     /// <param name="msg">The message object containing email details.</param>
     /// <param name="token">Access token for authentication.</param>
     Task InjectEmailAsync(DmiMessage msg, string token);
+
+    /// <summary>
+    /// Injects an email directly into the mailbox of the target user using MIME content.
+    /// </summary>
+    /// <param name="msg">The message object containing email details.</param>
+    /// <param name="token">Access token for authentication.</param>
+    Task InjectEmailMimeAsync(DmiMessage msg, string token);
     /// <summary>
     /// Sends an email on behalf of a user using the Microsoft Graph <c>/sendMail</c> endpoint.
     /// Verifies the sender exists before sending.
