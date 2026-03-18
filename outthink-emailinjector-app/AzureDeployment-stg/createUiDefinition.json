@@ -1,0 +1,96 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "basics": {
+        "description": "Configure OutThink Direct Mail Injection App deployment. **Note:** Only the Key Vault URL is required."
+      }
+    },
+    "basics": [
+      {
+        "name": "sku",
+        "type": "Microsoft.Common.DropDown",
+        "label": "App Service Plan SKU",
+        "toolTip": "Select the pricing tier for the App Service plan.",
+        "constraints": {
+          "allowedValues": [
+            { "label": "Basic - B1 (1 Small)", "value": "B1" },
+            { "label": "Basic - B2 (2 Medium)", "value": "B2" },
+            { "label": "Standard - S1 (1 Small)", "value": "S1" },
+            { "label": "Standard - S2 (2 Medium)", "value": "S2" }
+          ],
+          "required": true
+        },
+        "defaultValue": "B1",
+        "visible": true
+      },
+      {
+        "name": "keyVaultUrl",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Key Vault URL",
+        "toolTip": "URL of the Azure Key Vault (e.g. https://<your-vault>.vault.azure.net).",
+        "constraints": {
+          "required": true,
+          "regex": "https://[a-zA-Z0-9-]+\\.vault\\.azure\\.net(/)?",
+          "validationMessage": "Must be a valid Azure Key Vault URL (e.g., https://myvault.vault.azure.net)"
+        },
+        "visible": true
+      },
+      {
+        "name": "appServiceName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "App Service Name",
+        "toolTip": "Must be globally unique. Only letters, numbers, and hyphens allowed.",
+        "constraints": {
+          "required": true,
+          "regex": "^[a-zA-Z0-9-]{2,60}$",
+          "validationMessage": "Only letters, numbers, and hyphens are allowed. Max 60 characters."
+        },
+        "defaultValue": "outthink-emailinjector",
+        "visible": true
+      }
+    ],
+    "steps": [
+      {
+        "name": "regionalSettings",
+        "label": "Regional Settings",
+        "elements": [
+          {
+            "name": "apiBaseUrl",
+            "type": "Microsoft.Common.DropDown",
+            "label": "API Region",
+            "toolTip": "Select the region for the email injector API",
+            "placeholder": "Select your region",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label": "United States",
+                  "value": "united-states"
+                },
+                {
+                  "label": "United Arab Emirates",
+                  "value": "uae"
+                },
+                {
+                  "label": "Europe and rest of world",
+                  "value": "europe"
+                }
+              ]
+            },
+            "visible": true
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "sku": "[basics('sku')]",
+      "keyVaultUrl": "[basics('keyVaultUrl')]",
+      "apiBaseUrl": "[steps('regionalSettings').apiBaseUrl]",
+      "location": "[location()]",
+      "appServiceName": "[basics('appServiceName')]"
+    }
+  }
+}
