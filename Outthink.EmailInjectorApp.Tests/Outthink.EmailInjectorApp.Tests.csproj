@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
@@ -17,9 +17,9 @@
         <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
         <PackageReference Include="NSubstitute" Version="5.0.0" />
         <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
-        <PackageReference Include="Azure.Identity" Version="1.14.0-beta.2" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+        <PackageReference Include="Azure.Identity" Version="1.14.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
     </ItemGroup>
 
     <ItemGroup>
