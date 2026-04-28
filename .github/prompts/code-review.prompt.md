@@ -14,15 +14,15 @@ Review the selected code against the OutThink Email Injector App conventions. Fl
 - [ ] No layering violations (services should not reference `Workers/` namespace)
 
 ## DI & Registration
-- [ ] Registered as `AddSingleton` in `Program.cs` (not Scoped or Transient)
-- [ ] Registered via interface → implementation (`AddSingleton<IFoo, Foo>()`)
+- [ ] Registered in `Program.cs` using `AddSingleton` for regular services, or `AddHttpClient<...>()` for `HttpClient`-based services (avoid Scoped/Transient unless there is a documented reason)
+- [ ] Registered via interface → implementation where applicable (`AddSingleton<IFoo, Foo>()` or typed client equivalent)
 - [ ] Dependencies injected as interfaces, not concrete types
 
 ## Configuration
-- [ ] Config values accessed via `IConfigurationService.Get(ConfigurationKeys.Xxx)` — never `IConfiguration` directly
+- [ ] Application/business services access config via `IConfigurationService.Get(ConfigurationKeys.Xxx)`; direct `IConfiguration` injection is only for configuration/infrastructure wrapper services (for example `ConfigurationService`, and similar framework-facing services such as logging infrastructure where needed)
 - [ ] New config keys added to `ConfigurationKeys` as `public const string`
 - [ ] Default values added to `appsettings.json`
-- [ ] No hard-coded configuration values in service code
+- [ ] No hard-coded configuration values in application/business service code
 
 ## Serialization
 - [ ] Uses `System.Text.Json` exclusively — no `Newtonsoft.Json`
@@ -34,7 +34,7 @@ Review the selected code against the OutThink Email Injector App conventions. Fl
 
 ## Logging
 - [ ] Uses `ILoggingService.LogAsync()` with `LogType` enum — not `ILogger` directly in services
-- [ ] No sensitive data logged (emails masked via `MaskEmail`)
+- [ ] No sensitive data logged (emails masked; see `MessageProcessorService.MaskEmail` for the existing pattern)
 - [ ] Error paths log before continuing (catch-log-continue pattern)
 
 ## Error Handling

@@ -16,7 +16,7 @@ Background worker service that injects and sends phishing-simulation emails via 
 - **.NET 8** (ASP.NET Core Web SDK, `net8.0`)
 - **Microsoft Graph API** — direct HTTP calls (no Graph SDK), MSAL `ConfidentialClientApplication` for token acquisition
 - **Azure Key Vault** — `Azure.Security.KeyVault.Secrets` + `Azure.Identity` (`DefaultAzureCredential`)
-- **Polly 8.x** — `RetryPolicyFactory` for 429/503 with Retry-After support; `Microsoft.Extensions.Http.Resilience` standard resilience handler on `MessageProcessorService` HttpClient
+- **Polly 8.x** — `RetryPolicyFactory` for 429/503 with Retry-After support
 - **Application Insights** — telemetry via `Microsoft.ApplicationInsights.AspNetCore`
 - **System.Text.Json** — all serialization (no Newtonsoft)
 - **Testing**: xUnit 2.4, NSubstitute 5.x, RichardSzalay.MockHttp 7.x, Microsoft.NET.Test.Sdk 17.x
@@ -88,12 +88,12 @@ builder.Services.AddSingleton<IMyService, MyService>();
 ## What NOT to Do
 
 - Never use `Newtonsoft.Json` — use `System.Text.Json` exclusively
-- Never read `IConfiguration` directly in services — always go through `IConfigurationService`
+- Never read `IConfiguration` directly in application/business services — always go through `IConfigurationService` (exception: infrastructure wrapper services like `ConfigurationService` and `LoggingService` that need direct `IConfiguration` access)
 - Never register services as `Scoped` or `Transient` — use `Singleton`
 - Never throw generic `Exception` in new code without a descriptive message
 - Never hard-code configuration values — add them to `ConfigurationKeys` and `appsettings.json`
 - Never skip the interface — every new service/client must have a matching interface
-- Never log sensitive data (emails are masked via `MaskEmail` helper)
+- Never log sensitive data (mask emails using the existing pattern in `MessageProcessorService.MaskEmail`)
 
 ## Configuration (appsettings.json)
 
