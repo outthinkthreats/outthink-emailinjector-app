@@ -17,10 +17,10 @@
     },
     "sku": {
       "type": "string",
-      "defaultValue": "B1",
-      "allowedValues": ["B1", "B2", "S1", "S2"],
+      "defaultValue": "P0v3",
+      "allowedValues": ["B1", "S1", "P0v3", "P1v3"],
       "metadata": {
-        "description": "App Service Plan pricing tier (SKU)."
+        "description": "App Service Plan SKU. P0v3 is the recommended minimum."
       }
     },
     "keyVaultUrl": {
@@ -64,13 +64,12 @@
   "resources": [
     {
       "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2021-02-01",
+      "apiVersion": "2025-03-01",
       "name": "[variables('planName')]",
       "location": "[parameters('location')]",
       "kind": "linux",
       "sku": {
         "name": "[parameters('sku')]",
-        "tier": "[if(startsWith(parameters('sku'), 'B'), 'Basic', 'Standard')]",
         "capacity": 1
       },
       "properties": {
@@ -88,7 +87,7 @@
     },
     {
       "type": "Microsoft.Web/sites",
-      "apiVersion": "2021-02-01",
+      "apiVersion": "2025-03-01",
       "name": "[variables('appName')]",
       "location": "[parameters('location')]",
       "identity": {
@@ -111,7 +110,7 @@
         {
           "type": "config",
           "name": "appsettings",
-          "apiVersion": "2021-02-01",
+          "apiVersion": "2025-03-01",
           "dependsOn": [
             "[resourceId('Microsoft.Web/sites', variables('appName'))]"
           ],
@@ -143,7 +142,7 @@
     },
     "identityPrincipalId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2021-02-01', 'Full').identity.principalId]"
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2025-03-01', 'Full').identity.principalId]"
     }
   }
 }

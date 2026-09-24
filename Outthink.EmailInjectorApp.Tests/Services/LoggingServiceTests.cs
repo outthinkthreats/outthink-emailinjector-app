@@ -56,6 +56,27 @@ public class LoggingServiceTests
         Assert.Contains(_fakeLogger.Logs, log => log.Contains("Remote API down"));
     }
 
+    [Fact]
+    public async Task LogAsync_WithException_LogsDiagnosticDetailsLocallyAndRemotely()
+    {
+        var service = CreateService();
+        RegisterLog? sentLog = null;
+        _httpRequestService.SendAsync(
+                HttpMethod.Post,
+                "/log",
+                Arg.Do<RegisterLog>(log => sentLog = log))
+            .Returns(Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        var exception = new InvalidOperationException("Campaign processing failed");
+
+        await service.LogAsync("Unexpected processing error", logType: LogType.Error, exception: exception);
+
+        Assert.NotNull(sentLog);
+        Assert.Contains(sentLog.Args, arg => arg.Contains(nameof(InvalidOperationException)));
+        Assert.Contains(sentLog.Args, arg => arg.Contains("Campaign processing failed"));
+        Assert.Contains(_fakeLogger.Logs, log => log.Contains(nameof(InvalidOperationException)));
+        Assert.Contains(_fakeLogger.Logs, log => log.Contains("Campaign processing failed"));
+    }
+
     [Theory]
     [InlineData(LogType.Info)]
     [InlineData(LogType.Warning)]

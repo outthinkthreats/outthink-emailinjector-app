@@ -45,7 +45,10 @@ public class Worker : BackgroundService
             }
             catch (Exception ex)
             {
-                await _log.LogAsync("Unexpected error in campaign processing", [ex.Message], LogType.Error);
+                await _log.LogAsync(
+                    "Unexpected error in campaign processing",
+                    logType: LogType.Error,
+                    exception: ex);
             }
 
             await WaitUntilNextCycleAsync(stoppingToken);
