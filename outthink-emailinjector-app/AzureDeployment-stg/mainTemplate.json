@@ -1,148 +1,509 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "appServiceName": {
-      "type": "string",
-      "metadata": {
-        "description": "Globally unique name for the App Service."
-      }
-    },
-    "location": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "metadata": {
-        "description": "Azure region for deploying the App Service and related resources."
-      }
-    },
-    "sku": {
-      "type": "string",
-      "defaultValue": "B1",
-      "allowedValues": ["B1", "B2", "S1", "S2"],
-      "metadata": {
-        "description": "App Service Plan pricing tier (SKU)."
-      }
-    },
-    "keyVaultUrl": {
-      "type": "string",
-      "metadata": {
-        "description": "URL of the Azure Key Vault to be used by the application."
-      }
-    },
-    "apiBaseUrl": {
-      "type": "string",
-      "metadata": {
-        "description": "Base URL for the email injector API based on selected region."
-      }
-    },
-    "artifactsLocation": {
-      "type": "string",
-      "defaultValue": "[if(contains(deployment().properties, 'templateLink'), concat(substring(deployment().properties.templateLink.uri, 0, add(lastIndexOf(deployment().properties.templateLink.uri, '/'), 1)), ''), 'https://')]",
-      "metadata": {
-        "description": "The base URI of the Managed Application artifacts."
-      }
-    },
-    "artifactsLocationSasToken": {
-      "type": "securestring",
-      "defaultValue": "",
-      "metadata": {
-        "description": "(Optional) SAS token for the artifactsLocation if required."
-      }
-    }
-  },
-  "variables": {
-    "appName": "[parameters('appServiceName')]",
-    "planName": "[concat(parameters('appServiceName'), '-plan')]",
-    "apiUrlMap": {
-      "united-states": "https://outthink-api-public.ot-services-stg.net",
-      "uae": "https://outthink-api-public.ot-services-stg.net",
-      "europe": "https://outthink-api-public.ot-services-stg.net"
-    },
-    "resolvedApiUrl": "[variables('apiUrlMap')[parameters('apiBaseUrl')]]"
-  },
-  "resources": [
-    {
-      "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2021-02-01",
-      "name": "[variables('planName')]",
-      "location": "[parameters('location')]",
-      "kind": "linux",
-      "sku": {
-        "name": "[parameters('sku')]",
-        "tier": "[if(startsWith(parameters('sku'), 'B'), 'Basic', 'Standard')]",
-        "capacity": 1
-      },
-      "properties": {
-        "reserved": true
-      }
-    },
-    {
-      "type": "Microsoft.Insights/components",
-      "apiVersion": "2020-02-02",
-      "name": "[format('{0}-ai', variables('appName'))]",
-      "location": "[parameters('location')]",
-      "properties": {
-        "Application_Type": "web"
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites",
-      "apiVersion": "2021-02-01",
-      "name": "[variables('appName')]",
-      "location": "[parameters('location')]",
-      "identity": {
-        "type": "SystemAssigned"
-      },
-      "properties": {
-        "httpsOnly": true,
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
-        "siteConfig": {
-          "linuxFxVersion": "DOTNETCORE|8.0",
-          "appCommandLine": "dotnet /home/site/wwwroot/OutThink.EmailInjectorApp.dll",
-          "alwaysOn": true
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('planName'))]",
-        "[resourceId('Microsoft.Insights/components', format('{0}-ai', variables('appName')))]"
-      ],
-      "resources": [
-        {
-          "type": "config",
-          "name": "appsettings",
-          "apiVersion": "2021-02-01",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('appName'))]"
-          ],
-          "properties": {
-            "WEBSITE_RUN_FROM_PACKAGE": "[uri(parameters('artifactsLocation'), concat('app.zip', parameters('artifactsLocationSasToken')))]",
-            "ASPNETCORE_URLS": "http://0.0.0.0:8080",
-            "KeyVaultUrl": "[parameters('keyVaultUrl')]",
-            "ApiBaseUrl": "[parameters('apiBaseUrl')]",
-            "BatchSize": "50",
-            "SkipConfirmation": "false",
-            "APPLICATIONINSIGHTS_CONNECTION_STRING": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', variables('appName'))), '2020-02-02').ConnectionString]"
-          }
-        }
-      ]
-    }
-  ],
-  "outputs": {
-    "appServiceName": {
-      "type": "string",
-      "value": "[parameters('appServiceName')]"
-    },
-    "appServicePlanName": {
-      "type": "string",
-      "value": "[variables('planName')]"
-    },
-    "webAppUrl": {
-      "type": "string",
-      "value": "[format('https://{0}.azurewebsites.net', variables('appName'))]"
-    },
-    "identityPrincipalId": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Web/sites', variables('appName')), '2021-02-01', 'Full').identity.principalId]"
-    }
-  }
+    "$schema":  "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion":  "1.0.0.0",
+    "parameters":  {
+                       "deploymentMode":  {
+                                              "type":  "string",
+                                              "defaultValue":  "publicDefault",
+                                              "allowedValues":  [
+                                                                    "publicDefault",
+                                                                    "existingKeyVaultPrivate",
+                                                                    "fullPrivate"
+                                                                ],
+                                              "metadata":  {
+                                                               "description":  "Public deployment, private deployment with an existing Key Vault, or full private deployment with a new Key Vault."
+                                                           }
+                                          },
+                       "appServiceName":  {
+                                              "type":  "string",
+                                              "metadata":  {
+                                                               "description":  "Globally unique name for the App Service."
+                                                           }
+                                          },
+                       "location":  {
+                                        "type":  "string",
+                                        "defaultValue":  "[resourceGroup().location]",
+                                        "metadata":  {
+                                                         "description":  "Azure region for deploying the App Service and related resources."
+                                                     }
+                                    },
+                       "sku":  {
+                                   "type":  "string",
+                                   "defaultValue":  "P0v3",
+                                   "allowedValues":  [
+                                                         "B1",
+                                                         "S1",
+                                                         "P0v3",
+                                                         "P1v3"
+                                                     ],
+                                   "metadata":  {
+                                                    "description":  "App Service Plan SKU. P0v3 is the recommended minimum."
+                                                }
+                               },
+                       "apiBaseUrl":  {
+                                          "type":  "string",
+                                          "metadata":  {
+                                                           "description":  "Base URL for the email injector API based on selected region."
+                                                       }
+                                      },
+                       "keyVaultName":  {
+                                            "type":  "string",
+                                            "defaultValue":  "[toLower(concat(\u0027otkv\u0027, uniqueString(resourceGroup().id)))]",
+                                            "metadata":  {
+                                                             "description":  "Name of the Key Vault created in publicDefault and fullPrivate modes."
+                                                         }
+                                        },
+                       "existingKeyVaultResourceId":  {
+                                                          "type":  "string",
+                                                          "defaultValue":  "",
+                                                          "metadata":  {
+                                                                           "description":  "Resource ID of the existing Key Vault used in existingKeyVaultPrivate mode."
+                                                                       }
+                                                      },
+                       "existingKeyVaultUrl":  {
+                                                   "type":  "string",
+                                                   "defaultValue":  "",
+                                                   "metadata":  {
+                                                                    "description":  "URL of the existing Key Vault used in existingKeyVaultPrivate mode."
+                                                                }
+                                               },
+                       "newVnetName":  {
+                                           "type":  "string",
+                                           "defaultValue":  "[concat(parameters(\u0027appServiceName\u0027), \u0027-vnet\u0027)]",
+                                           "metadata":  {
+                                                            "description":  "Name of the VNet created in private modes."
+                                                        }
+                                       },
+                       "newVnetAddressPrefix":  {
+                                                    "type":  "string",
+                                                    "defaultValue":  "10.20.0.0/16"
+                                                },
+                       "appServiceSubnetPrefix":  {
+                                                      "type":  "string",
+                                                      "defaultValue":  "10.20.1.0/24"
+                                                  },
+                       "privateEndpointSubnetPrefix":  {
+                                                           "type":  "string",
+                                                           "defaultValue":  "10.20.2.0/24"
+                                                       },
+                       "natGatewayName":  {
+                                              "type":  "string",
+                                              "defaultValue":  "[concat(parameters(\u0027appServiceName\u0027), \u0027-nat\u0027)]"
+                                          },
+                       "natPublicIpName":  {
+                                               "type":  "string",
+                                               "defaultValue":  "[concat(parameters(\u0027appServiceName\u0027), \u0027-nat-pip\u0027)]"
+                                           },
+                       "artifactsLocation":  {
+                                                 "type":  "string",
+                                                 "defaultValue":  "[if(contains(deployment().properties, \u0027templateLink\u0027), concat(substring(deployment().properties.templateLink.uri, 0, add(lastIndexOf(deployment().properties.templateLink.uri, \u0027/\u0027), 1)), \u0027\u0027), \u0027https://\u0027)]",
+                                                 "metadata":  {
+                                                                  "description":  "The base URI of the Managed Application artifacts."
+                                                              }
+                                             },
+                       "artifactsLocationSasToken":  {
+                                                         "type":  "securestring",
+                                                         "defaultValue":  "",
+                                                         "metadata":  {
+                                                                          "description":  "(Optional) SAS token for the artifactsLocation if required."
+                                                                      }
+                                                     }
+                   },
+    "variables":  {
+                      "appName":  "[parameters(\u0027appServiceName\u0027)]",
+                      "planName":  "[concat(parameters(\u0027appServiceName\u0027), \u0027-plan\u0027)]",
+                      "isPrivateMode":  "[or(equals(parameters(\u0027deploymentMode\u0027), \u0027existingKeyVaultPrivate\u0027), equals(parameters(\u0027deploymentMode\u0027), \u0027fullPrivate\u0027))]",
+                      "isCreateKeyVaultMode":  "[or(equals(parameters(\u0027deploymentMode\u0027), \u0027publicDefault\u0027), equals(parameters(\u0027deploymentMode\u0027), \u0027fullPrivate\u0027))]",
+                      "appServiceSubnetName":  "appsvc-integration-subnet",
+                      "privateEndpointSubnetName":  "private-endpoints-subnet",
+                      "appInsightsName":  "[format(\u0027{0}-ai\u0027, variables(\u0027appName\u0027))]",
+                      "webAppPrivateEndpointName":  "[format(\u0027{0}-pep\u0027, variables(\u0027appName\u0027))]",
+                      "keyVaultPrivateEndpointName":  "[format(\u0027{0}-kv-pep\u0027, variables(\u0027appName\u0027))]",
+                      "keyVaultDnsZoneName":  "privatelink.vaultcore.azure.net",
+                      "webAppDnsZoneName":  "privatelink.azurewebsites.net",
+                      "apiUrlMap":  {
+                                        "united-states":  "https://outthink-api-public.ot-services-stg.net",
+                                        "uae":  "https://outthink-api-public.ot-services-stg.net",
+                                        "europe":  "https://outthink-api-public.ot-services-stg.net"
+                                    },
+                      "resolvedApiUrl":  "[variables(\u0027apiUrlMap\u0027)[parameters(\u0027apiBaseUrl\u0027)]]",
+                      "keyVaultResourceId":  "[if(variables(\u0027isCreateKeyVaultMode\u0027), resourceId(\u0027Microsoft.KeyVault/vaults\u0027, parameters(\u0027keyVaultName\u0027)), parameters(\u0027existingKeyVaultResourceId\u0027))]",
+                      "resolvedKeyVaultUrl":  "[if(variables(\u0027isCreateKeyVaultMode\u0027), format(\u0027https://{0}.vault.azure.net/\u0027, parameters(\u0027keyVaultName\u0027)), parameters(\u0027existingKeyVaultUrl\u0027))]",
+                      "appServiceSubnetResourceId":  "[resourceId(\u0027Microsoft.Network/virtualNetworks/subnets\u0027, parameters(\u0027newVnetName\u0027), variables(\u0027appServiceSubnetName\u0027))]",
+                      "privateEndpointSubnetResourceId":  "[resourceId(\u0027Microsoft.Network/virtualNetworks/subnets\u0027, parameters(\u0027newVnetName\u0027), variables(\u0027privateEndpointSubnetName\u0027))]"
+                  },
+    "resources":  [
+                      {
+                          "type":  "Microsoft.Web/serverfarms",
+                          "apiVersion":  "2025-03-01",
+                          "name":  "[variables(\u0027planName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "kind":  "linux",
+                          "sku":  {
+                                      "name":  "[parameters(\u0027sku\u0027)]",
+                                      "capacity":  1
+                                  },
+                          "properties":  {
+                                             "reserved":  true
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Insights/components",
+                          "apiVersion":  "2020-02-02",
+                          "name":  "[variables(\u0027appInsightsName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "properties":  {
+                                             "Application_Type":  "web"
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Web/sites",
+                          "apiVersion":  "2025-03-01",
+                          "name":  "[variables(\u0027appName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "identity":  {
+                                           "type":  "SystemAssigned"
+                                       },
+                          "properties":  {
+                                             "httpsOnly":  true,
+                                             "publicNetworkAccess":  "[if(variables(\u0027isPrivateMode\u0027), \u0027Disabled\u0027, \u0027Enabled\u0027)]",
+                                             "serverFarmId":  "[resourceId(\u0027Microsoft.Web/serverfarms\u0027, variables(\u0027planName\u0027))]",
+                                             "siteConfig":  {
+                                                                "linuxFxVersion":  "DOTNETCORE|8.0",
+                                                                "appCommandLine":  "dotnet /home/site/wwwroot/OutThink.EmailInjectorApp.dll",
+                                                                "alwaysOn":  true
+                                                            }
+                                         },
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Web/serverfarms\u0027, variables(\u0027planName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Insights/components\u0027, format(\u0027{0}-ai\u0027, variables(\u0027appName\u0027)))]"
+                                        ],
+                          "resources":  [
+                                            {
+                                                "type":  "config",
+                                                "name":  "appsettings",
+                                                "apiVersion":  "2025-03-01",
+                                                "dependsOn":  [
+                                                                  "[resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027))]"
+                                                              ],
+                                                "properties":  {
+                                                                   "WEBSITE_RUN_FROM_PACKAGE":  "[uri(parameters(\u0027artifactsLocation\u0027), concat(\u0027app.zip\u0027, parameters(\u0027artifactsLocationSasToken\u0027)))]",
+                                                                   "ASPNETCORE_URLS":  "http://0.0.0.0:8080",
+                                                                   "KeyVaultUrl":  "[variables(\u0027resolvedKeyVaultUrl\u0027)]",
+                                                                   "ApiBaseUrl":  "[variables(\u0027resolvedApiUrl\u0027)]",
+                                                                   "BatchSize":  "50",
+                                                                   "SkipConfirmation":  "false",
+                                                                   "APPLICATIONINSIGHTS_CONNECTION_STRING":  "[reference(resourceId(\u0027Microsoft.Insights/components\u0027, format(\u0027{0}-ai\u0027, variables(\u0027appName\u0027))), \u00272020-02-02\u0027).ConnectionString]"
+                                                               }
+                                            }
+                                        ]
+                      },
+                      {
+                          "type":  "Microsoft.KeyVault/vaults",
+                          "apiVersion":  "2023-02-01",
+                          "name":  "[parameters(\u0027keyVaultName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "condition":  "[variables(\u0027isCreateKeyVaultMode\u0027)]",
+                          "properties":  {
+                                             "sku":  {
+                                                         "family":  "A",
+                                                         "name":  "standard"
+                                                     },
+                                             "tenantId":  "[subscription().tenantId]",
+                                             "enableSoftDelete":  true,
+                                             "softDeleteRetentionInDays":  90,
+                                             "enablePurgeProtection":  true,
+                                             "publicNetworkAccess":  "[if(variables(\u0027isPrivateMode\u0027), \u0027Disabled\u0027, \u0027Enabled\u0027)]",
+                                             "accessPolicies":  [
+
+                                                                ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.KeyVault/vaults/accessPolicies",
+                          "apiVersion":  "2023-02-01",
+                          "name":  "[format(\u0027{0}/add\u0027, parameters(\u0027keyVaultName\u0027))]",
+                          "condition":  "[variables(\u0027isCreateKeyVaultMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.KeyVault/vaults\u0027, parameters(\u0027keyVaultName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "accessPolicies":  [
+                                                                    {
+                                                                        "tenantId":  "[subscription().tenantId]",
+                                                                        "objectId":  "[reference(resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027)), \u00272025-03-01\u0027, \u0027Full\u0027).identity.principalId]",
+                                                                        "permissions":  {
+                                                                                            "secrets":  [
+                                                                                                            "get",
+                                                                                                            "list"
+                                                                                                        ]
+                                                                                        }
+                                                                    }
+                                                                ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/publicIPAddresses",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[parameters(\u0027natPublicIpName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "sku":  {
+                                      "name":  "Standard"
+                                  },
+                          "properties":  {
+                                             "publicIPAllocationMethod":  "Static",
+                                             "publicIPAddressVersion":  "IPv4"
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/natGateways",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[parameters(\u0027natGatewayName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "sku":  {
+                                      "name":  "Standard"
+                                  },
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/publicIPAddresses\u0027, parameters(\u0027natPublicIpName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "publicIpAddresses":  [
+                                                                       {
+                                                                           "id":  "[resourceId(\u0027Microsoft.Network/publicIPAddresses\u0027, parameters(\u0027natPublicIpName\u0027))]"
+                                                                       }
+                                                                   ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/virtualNetworks",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[parameters(\u0027newVnetName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/natGateways\u0027, parameters(\u0027natGatewayName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "addressSpace":  {
+                                                                  "addressPrefixes":  [
+                                                                                          "[parameters(\u0027newVnetAddressPrefix\u0027)]"
+                                                                                      ]
+                                                              },
+                                             "subnets":  [
+                                                             {
+                                                                 "name":  "[variables(\u0027appServiceSubnetName\u0027)]",
+                                                                 "properties":  {
+                                                                                    "addressPrefix":  "[parameters(\u0027appServiceSubnetPrefix\u0027)]",
+                                                                                    "delegations":  [
+                                                                                                        {
+                                                                                                            "name":  "appServiceDelegation",
+                                                                                                            "properties":  {
+                                                                                                                               "serviceName":  "Microsoft.Web/serverFarms"
+                                                                                                                           }
+                                                                                                        }
+                                                                                                    ],
+                                                                                    "natGateway":  {
+                                                                                                       "id":  "[resourceId(\u0027Microsoft.Network/natGateways\u0027, parameters(\u0027natGatewayName\u0027))]"
+                                                                                                   }
+                                                                                }
+                                                             },
+                                                             {
+                                                                 "name":  "[variables(\u0027privateEndpointSubnetName\u0027)]",
+                                                                 "properties":  {
+                                                                                    "addressPrefix":  "[parameters(\u0027privateEndpointSubnetPrefix\u0027)]",
+                                                                                    "privateEndpointNetworkPolicies":  "Disabled"
+                                                                                }
+                                                             }
+                                                         ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateDnsZones",
+                          "apiVersion":  "2020-06-01",
+                          "name":  "[variables(\u0027keyVaultDnsZoneName\u0027)]",
+                          "location":  "global",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]"
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateDnsZones",
+                          "apiVersion":  "2020-06-01",
+                          "name":  "[variables(\u0027webAppDnsZoneName\u0027)]",
+                          "location":  "global",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]"
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                          "apiVersion":  "2020-06-01",
+                          "name":  "[format(\u0027{0}/{1}-link\u0027, variables(\u0027keyVaultDnsZoneName\u0027), parameters(\u0027newVnetName\u0027))]",
+                          "location":  "global",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/privateDnsZones\u0027, variables(\u0027keyVaultDnsZoneName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "registrationEnabled":  false,
+                                             "virtualNetwork":  {
+                                                                    "id":  "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                                                }
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                          "apiVersion":  "2020-06-01",
+                          "name":  "[format(\u0027{0}/{1}-link\u0027, variables(\u0027webAppDnsZoneName\u0027), parameters(\u0027newVnetName\u0027))]",
+                          "location":  "global",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/privateDnsZones\u0027, variables(\u0027webAppDnsZoneName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "registrationEnabled":  false,
+                                             "virtualNetwork":  {
+                                                                    "id":  "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                                                }
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateEndpoints",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[variables(\u0027webAppPrivateEndpointName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "subnet":  {
+                                                            "id":  "[variables(\u0027privateEndpointSubnetResourceId\u0027)]"
+                                                        },
+                                             "privateLinkServiceConnections":  [
+                                                                                   {
+                                                                                       "name":  "webAppConnection",
+                                                                                       "properties":  {
+                                                                                                          "privateLinkServiceId":  "[resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027))]",
+                                                                                                          "groupIds":  [
+                                                                                                                           "sites"
+                                                                                                                       ]
+                                                                                                      }
+                                                                                   }
+                                                                               ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[format(\u0027{0}/default\u0027, variables(\u0027webAppPrivateEndpointName\u0027))]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/privateEndpoints\u0027, variables(\u0027webAppPrivateEndpointName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Network/privateDnsZones\u0027, variables(\u0027webAppDnsZoneName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "privateDnsZoneConfigs":  [
+                                                                           {
+                                                                               "name":  "webAppZone",
+                                                                               "properties":  {
+                                                                                                  "privateDnsZoneId":  "[resourceId(\u0027Microsoft.Network/privateDnsZones\u0027, variables(\u0027webAppDnsZoneName\u0027))]"
+                                                                                              }
+                                                                           }
+                                                                       ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateEndpoints",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[variables(\u0027keyVaultPrivateEndpointName\u0027)]",
+                          "location":  "[parameters(\u0027location\u0027)]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "subnet":  {
+                                                            "id":  "[variables(\u0027privateEndpointSubnetResourceId\u0027)]"
+                                                        },
+                                             "privateLinkServiceConnections":  [
+                                                                                   {
+                                                                                       "name":  "keyVaultConnection",
+                                                                                       "properties":  {
+                                                                                                          "privateLinkServiceId":  "[variables(\u0027keyVaultResourceId\u0027)]",
+                                                                                                          "groupIds":  [
+                                                                                                                           "vault"
+                                                                                                                       ]
+                                                                                                      }
+                                                                                   }
+                                                                               ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+                          "apiVersion":  "2023-09-01",
+                          "name":  "[format(\u0027{0}/default\u0027, variables(\u0027keyVaultPrivateEndpointName\u0027))]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Network/privateEndpoints\u0027, variables(\u0027keyVaultPrivateEndpointName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Network/privateDnsZones\u0027, variables(\u0027keyVaultDnsZoneName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "privateDnsZoneConfigs":  [
+                                                                           {
+                                                                               "name":  "keyVaultZone",
+                                                                               "properties":  {
+                                                                                                  "privateDnsZoneId":  "[resourceId(\u0027Microsoft.Network/privateDnsZones\u0027, variables(\u0027keyVaultDnsZoneName\u0027))]"
+                                                                                              }
+                                                                           }
+                                                                       ]
+                                         }
+                      },
+                      {
+                          "type":  "Microsoft.Web/sites/config",
+                          "apiVersion":  "2025-03-01",
+                          "name":  "[format(\u0027{0}/web\u0027, variables(\u0027appName\u0027))]",
+                          "condition":  "[variables(\u0027isPrivateMode\u0027)]",
+                          "dependsOn":  [
+                                            "[resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027))]",
+                                            "[resourceId(\u0027Microsoft.Network/virtualNetworks\u0027, parameters(\u0027newVnetName\u0027))]"
+                                        ],
+                          "properties":  {
+                                             "virtualNetworkSubnetId":  "[variables(\u0027appServiceSubnetResourceId\u0027)]",
+                                             "vnetRouteAllEnabled":  true
+                                         }
+                      }
+                  ],
+    "outputs":  {
+                    "appServiceName":  {
+                                           "type":  "string",
+                                           "value":  "[parameters(\u0027appServiceName\u0027)]"
+                                       },
+                    "appServicePlanName":  {
+                                               "type":  "string",
+                                               "value":  "[variables(\u0027planName\u0027)]"
+                                           },
+                    "webAppUrl":  {
+                                      "type":  "string",
+                                      "value":  "[format(\u0027https://{0}.azurewebsites.net\u0027, variables(\u0027appName\u0027))]"
+                                  },
+                    "identityPrincipalId":  {
+                                                "type":  "string",
+                                                "value":  "[reference(resourceId(\u0027Microsoft.Web/sites\u0027, variables(\u0027appName\u0027)), \u00272025-03-01\u0027, \u0027Full\u0027).identity.principalId]"
+                                            },
+                    "deploymentMode":  {
+                                           "type":  "string",
+                                           "value":  "[parameters(\u0027deploymentMode\u0027)]"
+                                       },
+                    "keyVaultUrl":  {
+                                        "type":  "string",
+                                        "value":  "[variables(\u0027resolvedKeyVaultUrl\u0027)]"
+                                    },
+                    "natEgressPublicIp":  {
+                                              "type":  "string",
+                                              "value":  "[if(variables(\u0027isPrivateMode\u0027), reference(resourceId(\u0027Microsoft.Network/publicIPAddresses\u0027, parameters(\u0027natPublicIpName\u0027)), \u00272023-09-01\u0027).ipAddress, \u0027\u0027)]"
+                                          }
+                }
 }

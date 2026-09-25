@@ -3,5 +3,5 @@
   "description": "Deploys the OutThink Direct Mail Injection App with Azure Key Vault integration.",
   "publisher": "OutThink",
   "offerId": "outthink-emailinjectorappstg",
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

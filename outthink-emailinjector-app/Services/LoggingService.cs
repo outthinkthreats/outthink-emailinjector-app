@@ -39,10 +39,26 @@ namespace OutThink.EmailInjectorApp.Services
         /// <param name="message">The log message text.</param>
         /// <param name="args">Optional message parameters.</param>
         /// <param name="logType">The log level (Info, Warning, Error).</param>
-        public async Task LogAsync(string message, string[]? args = null, LogType logType = LogType.Info)
+        /// <param name="exception">Optional exception to include in local and remote diagnostics.</param>
+        public async Task LogAsync(
+            string message,
+            string[]? args = null,
+            LogType logType = LogType.Info,
+            Exception? exception = null)
         {
-            args ??= [];
-            var logEntry = new RegisterLog(_appName, message, args, logType);
+            var diagnosticArgs = args?.ToList() ?? [];
+            if (exception is not null)
+            {
+                diagnosticArgs.Add($"Exception type: {exception.GetType().FullName}");
+                diagnosticArgs.Add($"Exception message: {exception.Message}");
+
+                if (exception.InnerException is not null)
+                {
+                    diagnosticArgs.Add($"Inner exception: {exception.InnerException.Message}");
+                }
+            }
+
+            var logEntry = new RegisterLog(_appName, message, diagnosticArgs.ToArray(), logType);
 
             try
             {
@@ -55,7 +71,7 @@ namespace OutThink.EmailInjectorApp.Services
             }
             finally
             {
-                LogLocally(message, logType);
+                LogLocally(message, diagnosticArgs, logType, exception);
             }
         }
 
@@ -63,28 +79,31 @@ namespace OutThink.EmailInjectorApp.Services
         /// Writes a log entry to the local logger using the appropriate log level.
         /// </summary>
         /// <param name="message">The log message.</param>
-        
+        /// <param name="args">Optional diagnostic details.</param>
         /// <param name="logType">The log level to use.</param>
-        private void LogLocally(string message, LogType logType)
+        /// <param name="exception">Optional exception for stack trace logging.</param>
+        private void LogLocally(string message, IReadOnlyCollection<string> args, LogType logType, Exception? exception)
         {
-            
+            var localMessage = args.Count == 0
+                ? message
+                : $"{message}. Details: {string.Join(" | ", args)}";
 
             switch (logType)
             {
                 case LogType.Info:
-                    _logger.LogInformation(message);
+                    _logger.LogInformation(localMessage);
                     break;
                 case LogType.Warning:
-                    _logger.LogWarning(message);
+                    _logger.LogWarning(localMessage);
                     break;
                 case LogType.Error:
-                    _logger.LogError(message);
+                    _logger.LogError(exception, "{LogMessage}", localMessage);
                     break;
                 case LogType.Debug:
-                    _logger.LogDebug(message);
+                    _logger.LogDebug(localMessage);
                     break;
                 default:
-                    _logger.LogInformation(message);
+                    _logger.LogInformation(localMessage);
                     break;
             }
         }

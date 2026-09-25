@@ -10,33 +10,107 @@
     },
     "basics": [
       {
-        "name": "sku",
+        "name": "deploymentMode",
         "type": "Microsoft.Common.DropDown",
-        "label": "App Service Plan SKU",
-        "toolTip": "Select the pricing tier for the App Service plan.",
+        "label": "Deployment option",
+        "toolTip": "Public mode creates a public Key Vault. Private modes create a VNet, private endpoints, and static NAT egress.",
+        "defaultValue": "publicDefault",
         "constraints": {
+          "required": true,
           "allowedValues": [
-            { "label": "Basic - B1 (1 Small)", "value": "B1" },
-            { "label": "Basic - B2 (2 Medium)", "value": "B2" },
-            { "label": "Standard - S1 (1 Small)", "value": "S1" },
-            { "label": "Standard - S2 (2 Medium)", "value": "S2" }
-          ],
-          "required": true
+            { "label": "Public default - new Key Vault, no VNet", "value": "publicDefault" },
+            { "label": "Private with existing Key Vault", "value": "existingKeyVaultPrivate" },
+            { "label": "Full private - new Key Vault and private networking", "value": "fullPrivate" }
+          ]
         },
-        "defaultValue": "B1",
         "visible": true
       },
       {
-        "name": "keyVaultUrl",
+        "name": "b1Locations",
+        "type": "Microsoft.Solutions.ArmApiControl",
+        "request": {
+          "method": "GET",
+          "path": "[concat(subscription().id, '/providers/Microsoft.Web/geoRegions?api-version=2025-03-01&sku=Basic&linuxWorkersEnabled=true')]"
+        }
+      },
+      {
+        "name": "s1Locations",
+        "type": "Microsoft.Solutions.ArmApiControl",
+        "request": {
+          "method": "GET",
+          "path": "[concat(subscription().id, '/providers/Microsoft.Web/geoRegions?api-version=2025-03-01&sku=Standard&linuxWorkersEnabled=true')]"
+        }
+      },
+      {
+        "name": "p0v3Locations",
+        "type": "Microsoft.Solutions.ArmApiControl",
+        "request": {
+          "method": "GET",
+          "path": "[concat(subscription().id, '/providers/Microsoft.Web/geoRegions?api-version=2025-03-01&sku=Premium0V3&linuxWorkersEnabled=true')]"
+        }
+      },
+      {
+        "name": "p1v3Locations",
+        "type": "Microsoft.Solutions.ArmApiControl",
+        "request": {
+          "method": "GET",
+          "path": "[concat(subscription().id, '/providers/Microsoft.Web/geoRegions?api-version=2025-03-01&sku=PremiumV3&linuxWorkersEnabled=true')]"
+        }
+      },
+      {
+        "name": "sku",
+        "type": "Microsoft.Common.DropDown",
+        "label": "App Service Plan SKU",
+        "toolTip": "Available Linux App Service Plan SKUs for the selected subscription and region. P0v3 is the recommended minimum.",
+        "constraints": {
+          "allowedValues": "[if(and(and(empty(basics('b1Locations').value), empty(basics('s1Locations').value)), and(empty(basics('p0v3Locations').value), empty(basics('p1v3Locations').value))), parse('[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"},{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"},{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"},{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]'), concat(if(contains(map(basics('b1Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"}]'), parse('[]')), if(contains(map(basics('s1Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"}]'), parse('[]')), if(contains(map(basics('p0v3Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"}]'), parse('[]')), if(contains(map(basics('p1v3Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]'), parse('[]'))))]",
+          "required": true,
+          "validations": [
+            {
+              "isValid": "[or(equals(basics('deploymentMode'), 'publicDefault'), not(equals(basics('sku'), 'B1')))]",
+              "message": "Private modes require S1, P0v3, or P1v3 because they use App Service VNet integration."
+            }
+          ]
+        },
+        "visible": true
+      },
+      {
+        "name": "keyVaultName",
         "type": "Microsoft.Common.TextBox",
-        "label": "Key Vault URL",
-        "toolTip": "URL of the Azure Key Vault (e.g. https://<your-vault>.vault.azure.net).",
+        "label": "New Key Vault name",
+        "toolTip": "Used for public default and full private deployments.",
+        "defaultValue": "outthink-kv-dev",
+        "constraints": {
+          "required": true,
+          "regex": "^[a-zA-Z0-9-]{3,24}$",
+          "validationMessage": "Key Vault names must be 3-24 characters and contain only letters, numbers, and hyphens."
+        },
+        "visible": "[or(equals(basics('deploymentMode'), 'publicDefault'), equals(basics('deploymentMode'), 'fullPrivate'))]"
+      },
+      {
+        "name": "existingKeyVaultResourceId",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Existing Key Vault resource ID",
+        "toolTip": "Used only for private deployment with an existing Key Vault.",
+        "placeholder": "/subscriptions/<subId>/resourceGroups/<rg>/providers/Microsoft.KeyVault/vaults/<vaultName>",
+        "constraints": {
+          "required": true,
+          "regex": "^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[^/]+/providers/Microsoft\\.KeyVault/vaults/[^/]+$",
+          "validationMessage": "Must be a valid Key Vault resource ID."
+        },
+        "visible": "[equals(basics('deploymentMode'), 'existingKeyVaultPrivate')]"
+      },
+      {
+        "name": "existingKeyVaultUrl",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Existing Key Vault URL",
+        "toolTip": "Used only for private deployment with an existing Key Vault.",
         "constraints": {
           "required": true,
           "regex": "https://[a-zA-Z0-9-]+\\.vault\\.azure\\.net(/)?",
-          "validationMessage": "Must be a valid Azure Key Vault URL (e.g., https://myvault.vault.azure.net)"
+          "validationMessage": "Must be a valid Azure Key Vault URL."
         },
-        "visible": true
+        "visible": "[equals(basics('deploymentMode'), 'existingKeyVaultPrivate')]"
       },
       {
         "name": "appServiceName",
@@ -86,8 +160,11 @@
       }
     ],
     "outputs": {
+      "deploymentMode": "[basics('deploymentMode')]",
       "sku": "[basics('sku')]",
-      "keyVaultUrl": "[basics('keyVaultUrl')]",
+      "keyVaultName": "[basics('keyVaultName')]",
+      "existingKeyVaultResourceId": "[basics('existingKeyVaultResourceId')]",
+      "existingKeyVaultUrl": "[basics('existingKeyVaultUrl')]",
       "apiBaseUrl": "[steps('regionalSettings').apiBaseUrl]",
       "location": "[location()]",
       "appServiceName": "[basics('appServiceName')]"
