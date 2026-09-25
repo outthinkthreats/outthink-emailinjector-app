@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $expectedSkus = @('B1', 'S1', 'P0v3', 'P1v3')
+$expectedDeploymentModes = @('publicDefault', 'existingKeyVaultPrivate', 'fullPrivate')
 $expectedApiControls = @{
     b1Locations = 'sku=Basic'
     s1Locations = 'sku=Standard'
@@ -20,6 +21,21 @@ foreach ($environment in @('dev', 'stg', 'prd')) {
     $template = Get-Content $templatePath -Raw | ConvertFrom-Json
     $ui = Get-Content $uiPath -Raw | ConvertFrom-Json
     $metadata = Get-Content $metadataPath -Raw | ConvertFrom-Json
+
+    $actualDeploymentModes = @($template.parameters.deploymentMode.allowedValues)
+    if (($actualDeploymentModes -join ',') -ne ($expectedDeploymentModes -join ',')) {
+        throw "$environment template deployment modes are '$($actualDeploymentModes -join ',')'."
+    }
+
+    if ($template.parameters.deploymentMode.defaultValue -ne 'publicDefault') {
+        throw "$environment template must default to publicDefault deployment mode."
+    }
+
+    foreach ($parameterName in @('keyVaultName', 'existingKeyVaultResourceId', 'existingKeyVaultUrl', 'newVnetName', 'natGatewayName', 'natPublicIpName')) {
+        if ($null -eq $template.parameters.$parameterName) {
+            throw "$environment template is missing the $parameterName parameter."
+        }
+    }
 
     $actualSkus = @($template.parameters.sku.allowedValues)
     if (($actualSkus -join ',') -ne ($expectedSkus -join ',')) {
@@ -76,6 +92,23 @@ foreach ($environment in @('dev', 'stg', 'prd')) {
 
     if ($ui.parameters.outputs.sku -ne "[basics('sku')]") {
         throw "$environment UI no longer preserves the sku output contract."
+    }
+
+    foreach ($outputName in @('deploymentMode', 'keyVaultName', 'existingKeyVaultResourceId', 'existingKeyVaultUrl')) {
+        if ($null -eq $ui.parameters.outputs.$outputName) {
+            throw "$environment UI is missing the $outputName output."
+        }
+    }
+
+    $deploymentModeControl = @($ui.parameters.basics | Where-Object name -eq 'deploymentMode')[0]
+    if ($null -eq $deploymentModeControl -or $deploymentModeControl.defaultValue -ne 'publicDefault') {
+        throw "$environment UI deployment mode control is invalid."
+    }
+
+    $vnet = @($template.resources | Where-Object type -eq 'Microsoft.Network/virtualNetworks')[0]
+    $natGateway = @($template.resources | Where-Object type -eq 'Microsoft.Network/natGateways')[0]
+    if ($null -eq $vnet -or $null -eq $natGateway -or $vnet.condition -ne "[variables('isPrivateMode')]" -or $natGateway.condition -ne "[variables('isPrivateMode')]") {
+        throw "$environment private networking resources are missing or not conditional."
     }
 
     if ($metadata.version -ne '1.1.0') {

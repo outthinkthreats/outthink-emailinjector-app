@@ -21,6 +21,12 @@ The Azure Marketplace deployment checks Linux App Service tier availability for 
 
 Direct ARM template deployments default to `P0v3`. Override the `sku` parameter when that SKU is unavailable or a different capacity is required. Availability checks indicate regional tier support only; subscription quota and current Azure capacity can still cause deployment validation or provisioning to fail.
 
+### Deployment modes
+
+`publicDefault` creates a public Web App and a new public Key Vault. `existingKeyVaultPrivate` creates the private Web App networking, NAT egress IP, and a private endpoint to a customer-supplied Key Vault. `fullPrivate` also creates a new Key Vault with public access disabled.
+
+For `existingKeyVaultPrivate`, the customer must grant the Web App's system-assigned identity permission to read secrets from the existing vault after deployment. This is intentionally outside the template so the mode works with either Key Vault RBAC or access-policy authorization.
+
 Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Validate-AzureDeployment.ps1` before packaging the Managed Application artifacts.
 
 ## Monitoring & Troubleshooting
