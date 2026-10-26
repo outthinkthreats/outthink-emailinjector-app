@@ -169,7 +169,7 @@
                                              "publicNetworkAccess":  "[if(variables(\u0027isPrivateMode\u0027), \u0027Disabled\u0027, \u0027Enabled\u0027)]",
                                              "serverFarmId":  "[resourceId(\u0027Microsoft.Web/serverfarms\u0027, variables(\u0027planName\u0027))]",
                                              "siteConfig":  {
-                                                                "linuxFxVersion":  "DOTNETCORE|8.0",
+                                                                "linuxFxVersion":  "DOTNETCORE|10.0",
                                                                 "appCommandLine":  "dotnet /home/site/wwwroot/OutThink.EmailInjectorApp.dll",
                                                                 "alwaysOn":  true
                                                             }
