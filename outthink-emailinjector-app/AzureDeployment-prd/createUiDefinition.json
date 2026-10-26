@@ -1,96 +1,182 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
-  "handler": "Microsoft.Azure.CreateUIDef",
-  "version": "0.1.2-preview",
-  "parameters": {
-    "config": {
-      "basics": {
-        "description": "Configure OutThink Direct Mail Injection App deployment. **Note:** Only the Key Vault URL is required."
-      }
-    },
-    "basics": [
-      {
-        "name": "sku",
-        "type": "Microsoft.Common.DropDown",
-        "label": "App Service Plan SKU",
-        "toolTip": "Select the pricing tier for the App Service plan.",
-        "constraints": {
-          "allowedValues": [
-            { "label": "Basic - B1 (1 Small)", "value": "B1" },
-            { "label": "Basic - B2 (2 Medium)", "value": "B2" },
-            { "label": "Standard - S1 (1 Small)", "value": "S1" },
-            { "label": "Standard - S2 (2 Medium)", "value": "S2" }
-          ],
-          "required": true
-        },
-        "defaultValue": "B1",
-        "visible": true
-      },
-      {
-        "name": "keyVaultUrl",
-        "type": "Microsoft.Common.TextBox",
-        "label": "Key Vault URL",
-        "toolTip": "URL of the Azure Key Vault (e.g. https://<your-vault>.vault.azure.net).",
-        "constraints": {
-          "required": true,
-          "regex": "https://[a-zA-Z0-9-]+\\.vault\\.azure\\.net(/)?",
-          "validationMessage": "Must be a valid Azure Key Vault URL (e.g., https://myvault.vault.azure.net)"
-        },
-        "visible": true
-      },
-      {
-        "name": "appServiceName",
-        "type": "Microsoft.Common.TextBox",
-        "label": "App Service Name",
-        "toolTip": "Must be globally unique. Only letters, numbers, and hyphens allowed.",
-        "constraints": {
-          "required": true,
-          "regex": "^[a-zA-Z0-9-]{2,60}$",
-          "validationMessage": "Only letters, numbers, and hyphens are allowed. Max 60 characters."
-        },
-        "defaultValue": "outthink-emailinjector",
-        "visible": true
-      }
-    ],
-    "steps": [
-      {
-        "name": "regionalSettings",
-        "label": "Regional Settings",
-        "elements": [
-          {
-            "name": "apiBaseUrl",
-            "type": "Microsoft.Common.DropDown",
-            "label": "API Region",
-            "toolTip": "Select the region for the email injector API",
-            "placeholder": "Select your region",
-            "constraints": {
-              "required": true,
-              "allowedValues": [
-                {
-                  "label": "United States",
-                  "value": "united-states"
-                },
-                {
-                  "label": "United Arab Emirates",
-                  "value": "uae"
-                },
-                {
-                  "label": "Europe and rest of world",
-                  "value": "europe"
-                }
-              ]
-            },
-            "visible": true
-          }
-        ]
-      }
-    ],
-    "outputs": {
-      "sku": "[basics('sku')]",
-      "keyVaultUrl": "[basics('keyVaultUrl')]",
-      "apiBaseUrl": "[steps('regionalSettings').apiBaseUrl]",
-      "location": "[location()]",
-      "appServiceName": "[basics('appServiceName')]"
-    }
-  }
+    "$schema":  "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+    "handler":  "Microsoft.Azure.CreateUIDef",
+    "version":  "0.1.2-preview",
+    "parameters":  {
+                       "config":  {
+                                      "basics":  {
+                                                     "description":  "Configure OutThink Direct Mail Injection App deployment. **Note:** Only the Key Vault URL is required."
+                                                 }
+                                  },
+                       "basics":  [
+                                      {
+                                          "name":  "deploymentMode",
+                                          "type":  "Microsoft.Common.DropDown",
+                                          "label":  "Deployment option",
+                                          "toolTip":  "Public mode creates a public Key Vault. Private modes create a VNet, private endpoints, and static NAT egress.",
+                                          "defaultValue":  "publicDefault",
+                                          "constraints":  {
+                                                              "required":  true,
+                                                              "allowedValues":  [
+                                                                                    {
+                                                                                        "label":  "Public default - new Key Vault, no VNet",
+                                                                                        "value":  "publicDefault"
+                                                                                    },
+                                                                                    {
+                                                                                        "label":  "Private with existing Key Vault",
+                                                                                        "value":  "existingKeyVaultPrivate"
+                                                                                    },
+                                                                                    {
+                                                                                        "label":  "Full private - new Key Vault and private networking",
+                                                                                        "value":  "fullPrivate"
+                                                                                    }
+                                                                                ]
+                                                          },
+                                          "visible":  true
+                                      },
+                                      {
+                                          "name":  "b1Locations",
+                                          "type":  "Microsoft.Solutions.ArmApiControl",
+                                          "request":  {
+                                                          "method":  "GET",
+                                                          "path":  "[concat(subscription().id, \u0027/providers/Microsoft.Web/geoRegions?api-version=2025-03-01\u0026sku=Basic\u0026linuxWorkersEnabled=true\u0027)]"
+                                                      }
+                                      },
+                                      {
+                                          "name":  "s1Locations",
+                                          "type":  "Microsoft.Solutions.ArmApiControl",
+                                          "request":  {
+                                                          "method":  "GET",
+                                                          "path":  "[concat(subscription().id, \u0027/providers/Microsoft.Web/geoRegions?api-version=2025-03-01\u0026sku=Standard\u0026linuxWorkersEnabled=true\u0027)]"
+                                                      }
+                                      },
+                                      {
+                                          "name":  "p0v3Locations",
+                                          "type":  "Microsoft.Solutions.ArmApiControl",
+                                          "request":  {
+                                                          "method":  "GET",
+                                                          "path":  "[concat(subscription().id, \u0027/providers/Microsoft.Web/geoRegions?api-version=2025-03-01\u0026sku=Premium0V3\u0026linuxWorkersEnabled=true\u0027)]"
+                                                      }
+                                      },
+                                      {
+                                          "name":  "p1v3Locations",
+                                          "type":  "Microsoft.Solutions.ArmApiControl",
+                                          "request":  {
+                                                          "method":  "GET",
+                                                          "path":  "[concat(subscription().id, \u0027/providers/Microsoft.Web/geoRegions?api-version=2025-03-01\u0026sku=PremiumV3\u0026linuxWorkersEnabled=true\u0027)]"
+                                                      }
+                                      },
+                                      {
+                                          "name":  "sku",
+                                          "type":  "Microsoft.Common.DropDown",
+                                          "label":  "App Service Plan SKU",
+                                          "toolTip":  "Available Linux App Service Plan SKUs for the selected subscription and region. P0v3 is the recommended minimum.",
+                                          "constraints":  {
+                                                              "allowedValues":  "[if(and(and(empty(basics(\u0027b1Locations\u0027).value), empty(basics(\u0027s1Locations\u0027).value)), and(empty(basics(\u0027p0v3Locations\u0027).value), empty(basics(\u0027p1v3Locations\u0027).value))), parse(\u0027[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"},{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"},{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"},{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]\u0027), concat(if(contains(map(basics(\u0027b1Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"}]\u0027), parse(\u0027[]\u0027)), if(contains(map(basics(\u0027s1Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"}]\u0027), parse(\u0027[]\u0027)), if(contains(map(basics(\u0027p0v3Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"}]\u0027), parse(\u0027[]\u0027)), if(contains(map(basics(\u0027p1v3Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]\u0027), parse(\u0027[]\u0027))))]",
+                                                              "required":  true,
+                                                              "validations":  [
+                                                                                  {
+                                                                                      "isValid":  "[or(equals(basics(\u0027deploymentMode\u0027), \u0027publicDefault\u0027), not(equals(basics(\u0027sku\u0027), \u0027B1\u0027)))]",
+                                                                                      "message":  "Private modes require S1, P0v3, or P1v3 because they use App Service VNet integration."
+                                                                                  }
+                                                                              ]
+                                                          },
+                                          "visible":  true
+                                      },
+                                      {
+                                          "name":  "keyVaultName",
+                                          "type":  "Microsoft.Common.TextBox",
+                                          "label":  "New Key Vault name",
+                                          "toolTip":  "Used for public default and full private deployments.",
+                                          "defaultValue":  "outthink-kv-prd",
+                                          "constraints":  {
+                                                              "required":  true,
+                                                              "regex":  "^[a-zA-Z0-9-]{3,24}$",
+                                                              "validationMessage":  "Key Vault names must be 3-24 characters and contain only letters, numbers, and hyphens."
+                                                          },
+                                          "visible":  "[or(equals(basics(\u0027deploymentMode\u0027), \u0027publicDefault\u0027), equals(basics(\u0027deploymentMode\u0027), \u0027fullPrivate\u0027))]"
+                                      },
+                                      {
+                                          "name":  "existingKeyVaultResourceId",
+                                          "type":  "Microsoft.Common.TextBox",
+                                          "label":  "Existing Key Vault resource ID",
+                                          "toolTip":  "Used only for private deployment with an existing Key Vault.",
+                                          "placeholder":  "/subscriptions/\u003csubId\u003e/resourceGroups/\u003crg\u003e/providers/Microsoft.KeyVault/vaults/\u003cvaultName\u003e",
+                                          "constraints":  {
+                                                              "required":  true,
+                                                              "regex":  "^/subscriptions/[0-9a-fA-F-]{36}/resourceGroups/[^/]+/providers/Microsoft\\.KeyVault/vaults/[^/]+$",
+                                                              "validationMessage":  "Must be a valid Key Vault resource ID."
+                                                          },
+                                          "visible":  "[equals(basics(\u0027deploymentMode\u0027), \u0027existingKeyVaultPrivate\u0027)]"
+                                      },
+                                      {
+                                          "name":  "existingKeyVaultUrl",
+                                          "type":  "Microsoft.Common.TextBox",
+                                          "label":  "Existing Key Vault URL",
+                                          "toolTip":  "Used only for private deployment with an existing Key Vault.",
+                                          "constraints":  {
+                                                              "required":  true,
+                                                              "regex":  "https://[a-zA-Z0-9-]+\\.vault\\.azure\\.net(/)?",
+                                                              "validationMessage":  "Must be a valid Azure Key Vault URL."
+                                                          },
+                                          "visible":  "[equals(basics(\u0027deploymentMode\u0027), \u0027existingKeyVaultPrivate\u0027)]"
+                                      },
+                                      {
+                                          "name":  "appServiceName",
+                                          "type":  "Microsoft.Common.TextBox",
+                                          "label":  "App Service Name",
+                                          "toolTip":  "Must be globally unique. Only letters, numbers, and hyphens allowed.",
+                                          "constraints":  {
+                                                              "required":  true,
+                                                              "regex":  "^[a-zA-Z0-9-]{2,60}$",
+                                                              "validationMessage":  "Only letters, numbers, and hyphens are allowed. Max 60 characters."
+                                                          },
+                                          "defaultValue":  "outthink-emailinjector-prd",
+                                          "visible":  true
+                                      }
+                                  ],
+                       "steps":  [
+                                     {
+                                         "name":  "regionalSettings",
+                                         "label":  "Regional Settings",
+                                         "elements":  [
+                                                          {
+                                                              "name":  "apiBaseUrl",
+                                                              "type":  "Microsoft.Common.DropDown",
+                                                              "label":  "API Region",
+                                                              "toolTip":  "Select the region for the email injector API",
+                                                              "placeholder":  "Select your region",
+                                                              "constraints":  {
+                                                                                  "required":  true,
+                                                                                  "allowedValues":  [
+                                                                                                        {
+                                                                                                            "label":  "United States",
+                                                                                                            "value":  "united-states"
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "label":  "United Arab Emirates",
+                                                                                                            "value":  "uae"
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "label":  "Europe and rest of world",
+                                                                                                            "value":  "europe"
+                                                                                                        }
+                                                                                                    ]
+                                                                              },
+                                                              "visible":  true
+                                                          }
+                                                      ]
+                                     }
+                                 ],
+                       "outputs":  {
+                                       "deploymentMode":  "[basics(\u0027deploymentMode\u0027)]",
+                                       "sku":  "[basics(\u0027sku\u0027)]",
+                                       "keyVaultName":  "[basics(\u0027keyVaultName\u0027)]",
+                                       "existingKeyVaultResourceId":  "[basics(\u0027existingKeyVaultResourceId\u0027)]",
+                                       "existingKeyVaultUrl":  "[basics(\u0027existingKeyVaultUrl\u0027)]",
+                                       "apiBaseUrl":  "[steps(\u0027regionalSettings\u0027).apiBaseUrl]",
+                                       "location":  "[location()]",
+                                       "appServiceName":  "[basics(\u0027appServiceName\u0027)]"
+                                   }
+                   }
 }
