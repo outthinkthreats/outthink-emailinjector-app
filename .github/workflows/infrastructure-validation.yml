@@ -1,0 +1,29 @@
+name: Infrastructure validation
+
+on:
+  push:
+    branches: [develop, master, staging]
+    paths:
+      - 'outthink-emailinjector-app/AzureDeployment-*/**'
+      - 'scripts/Validate-AzureDeployment.ps1'
+      - '.github/workflows/infrastructure-validation.yml'
+  pull_request:
+    branches: [develop, master, staging]
+    paths:
+      - 'outthink-emailinjector-app/AzureDeployment-*/**'
+      - 'scripts/Validate-AzureDeployment.ps1'
+      - '.github/workflows/infrastructure-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate deployment artifacts
+        shell: pwsh
+        run: ./scripts/Validate-AzureDeployment.ps1
