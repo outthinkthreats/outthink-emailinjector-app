@@ -1,5 +1,4 @@
 BuiltPackages
-AzureDeployment-*
 appsettings-*.json
 #Ignore thumbnails created by Windows
 Thumbs.db

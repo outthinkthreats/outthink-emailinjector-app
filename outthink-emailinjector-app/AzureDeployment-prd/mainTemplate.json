@@ -128,7 +128,7 @@
                                     },
                       "resolvedApiUrl":  "[variables(\u0027apiUrlMap\u0027)[parameters(\u0027apiBaseUrl\u0027)]]",
                       "keyVaultResourceId":  "[if(variables(\u0027isCreateKeyVaultMode\u0027), resourceId(\u0027Microsoft.KeyVault/vaults\u0027, parameters(\u0027keyVaultName\u0027)), parameters(\u0027existingKeyVaultResourceId\u0027))]",
-                      "resolvedKeyVaultUrl":  "[if(variables(\u0027isCreateKeyVaultMode\u0027), format(\u0027https://{0}.vault.azure.net/\u0027, parameters(\u0027keyVaultName\u0027)), parameters(\u0027existingKeyVaultUrl\u0027))]",
+                      "resolvedKeyVaultUrl":  "[if(variables(\u0027isCreateKeyVaultMode\u0027), format(\u0027https://{0}{1}/\u0027, parameters(\u0027keyVaultName\u0027), environment().suffixes.keyvaultDns), parameters(\u0027existingKeyVaultUrl\u0027))]",
                       "appServiceSubnetResourceId":  "[resourceId(\u0027Microsoft.Network/virtualNetworks/subnets\u0027, parameters(\u0027newVnetName\u0027), variables(\u0027appServiceSubnetName\u0027))]",
                       "privateEndpointSubnetResourceId":  "[resourceId(\u0027Microsoft.Network/virtualNetworks/subnets\u0027, parameters(\u0027newVnetName\u0027), variables(\u0027privateEndpointSubnetName\u0027))]"
                   },

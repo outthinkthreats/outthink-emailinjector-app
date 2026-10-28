@@ -72,12 +72,33 @@
                                           "label":  "App Service Plan SKU",
                                           "toolTip":  "Available Linux App Service Plan SKUs for the selected subscription and region. P0v3 is the recommended minimum.",
                                           "constraints":  {
-                                                              "allowedValues":  "[if(and(and(empty(basics(\u0027b1Locations\u0027).value), empty(basics(\u0027s1Locations\u0027).value)), and(empty(basics(\u0027p0v3Locations\u0027).value), empty(basics(\u0027p1v3Locations\u0027).value))), parse(\u0027[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"},{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"},{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"},{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]\u0027), concat(if(contains(map(basics(\u0027b1Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"}]\u0027), parse(\u0027[]\u0027)), if(contains(map(basics(\u0027s1Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"}]\u0027), parse(\u0027[]\u0027)), if(contains(map(basics(\u0027p0v3Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"}]\u0027), parse(\u0027[]\u0027)), if(contains(map(basics(\u0027p1v3Locations\u0027).value, (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))), parse(\u0027[{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]\u0027), parse(\u0027[]\u0027))))]",
+                                                              "allowedValues":  [
+                                                                  {
+                                                                      "label":  "Premium v3 P0v3 - recommended minimum",
+                                                                      "value":  "P0v3"
+                                                                  },
+                                                                  {
+                                                                      "label":  "Premium v3 P1v3 - higher capacity",
+                                                                      "value":  "P1v3"
+                                                                  },
+                                                                  {
+                                                                      "label":  "Standard S1 - lower cost",
+                                                                      "value":  "S1"
+                                                                  },
+                                                                  {
+                                                                      "label":  "Basic B1 - lower cost",
+                                                                      "value":  "B1"
+                                                                  }
+                                                              ],
                                                               "required":  true,
                                                               "validations":  [
                                                                                   {
                                                                                       "isValid":  "[or(equals(basics(\u0027deploymentMode\u0027), \u0027publicDefault\u0027), not(equals(basics(\u0027sku\u0027), \u0027B1\u0027)))]",
                                                                                       "message":  "Private modes require S1, P0v3, or P1v3 because they use App Service VNet integration."
+                                                                                  },
+                                                                                  {
+                                                                                      "isValid":  "[or(and(and(empty(basics(\u0027b1Locations\u0027).value), empty(basics(\u0027s1Locations\u0027).value)), and(empty(basics(\u0027p0v3Locations\u0027).value), empty(basics(\u0027p1v3Locations\u0027).value))), contains(map(if(equals(basics(\u0027sku\u0027), \u0027B1\u0027), basics(\u0027b1Locations\u0027).value, if(equals(basics(\u0027sku\u0027), \u0027S1\u0027), basics(\u0027s1Locations\u0027).value, if(equals(basics(\u0027sku\u0027), \u0027P0v3\u0027), basics(\u0027p0v3Locations\u0027).value, basics(\u0027p1v3Locations\u0027).value))), (item) =\u003e toLower(replace(item.name, \u0027 \u0027, \u0027\u0027))), toLower(replace(location(), \u0027 \u0027, \u0027\u0027))))]",
+                                                                                      "message":  "The selected SKU is not available for this region."
                                                                                   }
                                                                               ]
                                                           },
