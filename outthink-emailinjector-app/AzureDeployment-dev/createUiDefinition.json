@@ -63,12 +63,33 @@
         "label": "App Service Plan SKU",
         "toolTip": "Available Linux App Service Plan SKUs for the selected subscription and region. P0v3 is the recommended minimum.",
         "constraints": {
-          "allowedValues": "[if(and(and(empty(basics('b1Locations').value), empty(basics('s1Locations').value)), and(empty(basics('p0v3Locations').value), empty(basics('p1v3Locations').value))), parse('[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"},{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"},{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"},{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]'), concat(if(contains(map(basics('b1Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Basic B1 - lower cost\",\"value\":\"B1\"}]'), parse('[]')), if(contains(map(basics('s1Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Standard S1 - lower cost\",\"value\":\"S1\"}]'), parse('[]')), if(contains(map(basics('p0v3Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Premium v3 P0v3 - recommended minimum\",\"value\":\"P0v3\"}]'), parse('[]')), if(contains(map(basics('p1v3Locations').value, (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))), parse('[{\"label\":\"Premium v3 P1v3 - higher capacity\",\"value\":\"P1v3\"}]'), parse('[]'))))]",
+          "allowedValues": [
+            {
+              "label": "Premium v3 P0v3 - recommended minimum",
+              "value": "P0v3"
+            },
+            {
+              "label": "Premium v3 P1v3 - higher capacity",
+              "value": "P1v3"
+            },
+            {
+              "label": "Standard S1 - lower cost",
+              "value": "S1"
+            },
+            {
+              "label": "Basic B1 - lower cost",
+              "value": "B1"
+            }
+          ],
           "required": true,
           "validations": [
             {
               "isValid": "[or(equals(basics('deploymentMode'), 'publicDefault'), not(equals(basics('sku'), 'B1')))]",
               "message": "Private modes require S1, P0v3, or P1v3 because they use App Service VNet integration."
+            },
+            {
+              "isValid": "[or(and(and(empty(basics('b1Locations').value), empty(basics('s1Locations').value)), and(empty(basics('p0v3Locations').value), empty(basics('p1v3Locations').value))), contains(map(if(equals(basics('sku'), 'B1'), basics('b1Locations').value, if(equals(basics('sku'), 'S1'), basics('s1Locations').value, if(equals(basics('sku'), 'P0v3'), basics('p0v3Locations').value, basics('p1v3Locations').value))), (item) => toLower(replace(item.name, ' ', ''))), toLower(replace(location(), ' ', ''))))]",
+              "message": "The selected SKU is not available for Linux App Service in this region."
             }
           ]
         },

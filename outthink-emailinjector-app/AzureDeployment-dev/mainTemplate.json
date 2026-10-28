@@ -120,7 +120,7 @@
     },
     "resolvedApiUrl": "[variables('apiUrlMap')[parameters('apiBaseUrl')]]",
     "keyVaultResourceId": "[if(variables('isCreateKeyVaultMode'), resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('existingKeyVaultResourceId'))]",
-    "resolvedKeyVaultUrl": "[if(variables('isCreateKeyVaultMode'), format('https://{0}.vault.azure.net/', parameters('keyVaultName')), parameters('existingKeyVaultUrl'))]",
+    "resolvedKeyVaultUrl": "[if(variables('isCreateKeyVaultMode'), format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns), parameters('existingKeyVaultUrl'))]",
     "appServiceSubnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('newVnetName'), variables('appServiceSubnetName'))]",
     "privateEndpointSubnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('newVnetName'), variables('privateEndpointSubnetName'))]"
   },
