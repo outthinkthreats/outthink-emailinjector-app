@@ -8,18 +8,18 @@ Background worker service that injects and sends phishing-simulation emails via 
 
 | Project | Purpose |
 |---|---|
-| `outthink-emailinjector-app` (`OutThink.EmailInjectorApp`) | Main app — ASP.NET Core 8 Web host with `BackgroundService` worker, Graph API client, config from Azure Key Vault, remote logging |
+| `outthink-emailinjector-app` (`OutThink.EmailInjectorApp`) | Main app — ASP.NET Core 10 Web host with `BackgroundService` worker, Graph API client, config from Azure Key Vault, remote logging |
 | `Outthink.EmailInjectorApp.Tests` | xUnit tests — references main project, uses NSubstitute + RichardSzalay.MockHttp |
 
 ## Tech Stack
 
-- **.NET 8** (ASP.NET Core Web SDK, `net8.0`)
+- **.NET 10** (ASP.NET Core Web SDK, `net10.0`)
 - **Microsoft Graph API** — direct HTTP calls (no Graph SDK), MSAL `ConfidentialClientApplication` for token acquisition
 - **Azure Key Vault** — `Azure.Security.KeyVault.Secrets` + `Azure.Identity` (`DefaultAzureCredential`)
 - **Polly 8.x** — `RetryPolicyFactory` for 429/503 with Retry-After support
 - **Application Insights** — telemetry via `Microsoft.ApplicationInsights.AspNetCore`
 - **System.Text.Json** — all serialization (no Newtonsoft)
-- **Testing**: xUnit 2.4, NSubstitute 5.x, RichardSzalay.MockHttp 7.x, Microsoft.NET.Test.Sdk 17.x
+- **Testing**: xUnit v3 on Microsoft.Testing.Platform (`dotnet test`, runner set in `global.json`), NSubstitute 6.x, RichardSzalay.MockHttp 7.x
 
 ## Architecture
 
